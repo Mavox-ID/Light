@@ -1,0 +1,23 @@
+Note!
+Most files were used from operating systems created from scratch by other authors under their license.
+Light OS was written entirely from scratch by the developer Mavox-ID.
+However, drivers, ports (applications and their logic), and some logic were taken from other operating systems, but all were used by the developer Mavox-ID.
+We would like to thank all developers for all the code used in Light OS.
+
+Here are the directories where everything was created by other authors under their license:
+
+light/
+├── drivers/
+└── ports/
+
+You can find additional information in the folders for each directory:
+
+light/
+├── drivers/
+│ └── INFO
+└── ports/
+  └── INFO
+
+Also, please note that all programs created in the drivers and ports folders were created by other developers and are distributed under their licenses, not the Light OS license. Any use of their programs requires you to agree that you are making a copy of their programs, not Light OS.
+
+Thank you for your understanding.

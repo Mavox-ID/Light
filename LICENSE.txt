@@ -1,0 +1,13 @@
+Copyright (c) 2026 Mavox-ID
+
+This software is distributed under the CC-BY 4.0 license.
+You are free to copy, modify, and use this code for any purpose, provided:
+
+1. You retain the original attribution notice.
+
+2. You provide an active link to the original repository.
+
+3. You provide a brief description of the changes you made.
+
+The software is provided "as is," without any warranties.
+Also, be sure to read the 'INFO' file! Before you start and write 'yes'
