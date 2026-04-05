@@ -1,6 +1,6 @@
 # **Light OS** — Try hard and you'll succeed.
 
-![Screenshot showing the file manager, text editor, and bitmap image editor.](https://raw.githubusercontent.com/Mavox-ID/Light/main/res/Example.jpg)
+![Screenshot showing the file manager, text editor, and bitmap image editor.](https://raw.githubusercontent.com/Mavox-ID/Light/main/res/Example.png)
 
 ## Supporters
 
