@@ -1,0 +1,67 @@
+str url #option;
+str directoryName #option;
+str checksum #option;
+
+void Get(str url, str directoryName, str checksum) {
+	assert url != "";
+	assert directoryName != "";
+
+	assert PathCreateLeadingDirectories("bin/cache");
+	PathDeleteRecursively("bin/source");
+
+	str url2 = "";
+
+	for int i = 0; i < url:len(); i += 1 {
+		if CharacterIsAlnum(url[i]) {
+			url2 += url[i];
+		} else {
+			url2 += "_";
+		}
+	}
+
+  str cacheDir = "tag/v1.0";
+  PathCreateLeadingDirectories(cacheDir);
+	str cachePath = cacheDir + "/" + url2;
+	str alternateURL = "";
+
+	if checksum != "" {
+		// If we're verifying the checksum of the file, then it should be okay to try downloading it from a non-official mirror.
+		alternateURL = "https://github.com/Mavox-ID/cdn/releases/download/v1.0/" + url2;
+		Log("Attempting to download from '%alternateURL%' with fallback '%url%'...");
+	} else {
+		Log("Attempting to download from '%url%'...");
+	}
+
+	bool got = PathExists(cachePath);
+
+	if !got && alternateURL != "" got = SystemShellExecute("curl -f -L %alternateURL% > %cachePath%");
+	if !got got = SystemShellExecute("curl -f -L %url% > %cachePath%");
+
+	if !got {
+		PathDelete(cachePath);
+		LogError("Could not download the file at '%url%'. Exiting.\n");
+		assert false;
+	}
+
+	str decompressFlag = "";
+
+	if StringContains(url, ".tar.bz2") {
+		decompressFlag = "j";
+	} else if StringContains(url, ".tar.xz") {
+		decompressFlag = "J";
+	} else if StringContains(url, ".tar.gz") {
+		decompressFlag = "z";
+	} else {
+		LogError("Unrecognised archive format extension.\n");
+		assert false;
+	}
+
+	assert SystemShellExecute("tar -x%decompressFlag%f %cachePath%");
+	assert PathMove(directoryName, "bin/source");
+
+	Log("File successfully downloaded and extracted.");
+}
+
+void Start() {
+	Get(url, directoryName, "");
+}
