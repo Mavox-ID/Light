@@ -1,0 +1,441 @@
+// TODO Merge util/build.c into here.
+
+#import "ports/port.script" port;
+
+str options #option;
+str target #option;
+
+str targetName;
+str targetToolchainPrefix;
+
+int currentCompilerIndex;
+
+bool acceptedLicense #persist;
+str compilerPath #persist;
+int compilerIndex #persist;
+bool runningMakefiles #persist;
+
+//void BuildW() {
+//    Log("\033[0;31m!!! WARNING !!!\033[0m\n\n");
+//    Log("\033[0;32mRun the make build command and enter build-port harfbuzz and build-port freetype!\033[0m\n\n");
+//    Log("\033[0;31m!!! WARNING !!!\033[0m\n\n");
+//}
+
+/////////////////////////////////////////////////////////////
+// Environment setup
+/////////////////////////////////////////////////////////////
+
+void Setup(bool forAutomation) {
+	assert PersistRead("bin/start.script.persist");
+
+	if !forAutomation && !acceptedLicense {
+		Log("=== Light License ===\n");
+		Log(FileReadAll("LICENSE.txt"):assert());
+		Log("Type 'yes' to acknowledge you have read the license, or press Ctrl-C to exit.");
+		str input = ConsoleGetLine(); // TODO Use ConsoleGetYes.
+		if input != "yes" && input != "y" { return; }
+		acceptedLicense = true;
+	}
+
+
+	SystemShellEnableLogging(false);
+
+	assert PathCreateLeadingDirectories("bin/dependency_files");
+	assert PathCreateLeadingDirectories("bin/Logs");
+	assert PathCreateLeadingDirectories("bin/generated_code");
+	assert PathCreateLeadingDirectories("bin/cache");
+	assert PathCreateLeadingDirectories("bin/Object Files");
+
+	if SystemGetHostName() == "Cygwin" {
+		LogError("Building on Cygwin is not supported. Use the Windows Subsystem for Linux instead.");
+		assert false;
+	}
+
+	if SystemShellEvaluate("shasum -a 256 util/test.txt") 
+			!= "2c5622dbbf2552e0e66424a302bde0918e09379afce47eef1a21ef0198990fed  util/test.txt\n" {
+		Log(TextColorError() + "--------------------------------------------------------------------");
+		Log(TextColorError() + "                  The source has been corrupted!!                   ");
+		Log(TextColorError() + "  Please check that you have disabled any automatic line-ending or  ");
+		Log(TextColorError() + " encoding conversions in Git and archive extraction tools you use.  ");
+		Log(TextColorError() + "--------------------------------------------------------------------");
+		assert false;
+	}
+
+	if StringContains(PathGetDefaultPrefix(), " ") {
+		LogError("The path to your light directory, '%PathGetDefaultPrefix()%', contains spaces.");
+		assert false;
+	}
+
+	if !SystemShellExecute("which gcc  > /dev/null") { LogError("GCC was not found.");  assert false; }
+	if !SystemShellExecute("which nasm > /dev/null") { LogError("Nasm was not found."); assert false; }
+	if !SystemShellExecute("which make > /dev/null") { LogError("Make was not found."); assert false; }
+
+	if target == "" {
+		target = "TARGET_X86_64";
+	}
+
+	bool toolchainHasRedZone = false;
+
+	if target == "TARGET_X86_64" {
+		targetToolchainPrefix = "x86_64-light";
+		targetName = "x86_64";
+		toolchainHasRedZone = true;
+	} else if target == "TARGET_X86_32" {
+		targetToolchainPrefix = "i686-elf";
+		targetName = "x86_32";
+	} else {
+		Log("Unknown target!");
+		assert false;
+	}
+
+	assert SystemShellExecute("gcc -o bin/build -g util/build.c -pthread -DPARALLEL_BUILD -D%target% "
+			+ "-Wall -Wextra -Wno-missing-field-initializers -Wno-format-truncation");
+
+	if forAutomation {
+		assert FileWriteAll("bin/commit.txt", StringSlice(StringSplitByCharacter(SystemShellEvaluate("git log"), "\n", true)[0], 8, 15));
+	}
+
+	currentCompilerIndex = 1;
+
+	if compilerPath == "" {
+		port.StartWithOptions("gcc", true, forAutomation, targetName, targetToolchainPrefix);
+		compilerPath = port.compilerPath;
+		compilerIndex = currentCompilerIndex;
+		assert StringContains(SystemGetEnvironmentVariable("PATH"):assert(), compilerPath);
+		port.StartWithOptions("zlib", false, true, targetName, targetToolchainPrefix);
+	        port.StartWithOptions("mesa", false, true, targetName, targetToolchainPrefix);
+	        port.StartWithOptions("harfbuzz", false, true, targetName, targetToolchainPrefix);
+	        port.StartWithOptions("freetype", false, true, targetName, targetToolchainPrefix);
+		assert SystemShellExecute("bin/build b");
+	       // --------
+	       //BuildW();
+	} else {
+		str oldPath = SystemGetEnvironmentVariable("PATH"):assert();
+		assert !StringContains(oldPath, "::"); // If the PATH variable has a double colon in it, GCC won't build.
+		assert SystemSetEnvironmentVariable("PATH", compilerPath + ":" + oldPath);
+	}
+
+	if compilerIndex != currentCompilerIndex {
+		Log("Warning: Your cross compiler appears to be out of date.");
+		Log("Run %TextColorHighlight()%get-toolchain%TextPlain()% before continuing.");
+	}
+
+	if toolchainHasRedZone {
+		assert StringContains(SystemShellEvaluate("%targetToolchainPrefix%-gcc -mno-red-zone -print-libgcc-file-name"), "no-red-zone");
+	}
+}
+
+/////////////////////////////////////////////////////////////
+// Command interface
+/////////////////////////////////////////////////////////////
+
+void DoCommand(str command) {
+	if command == "line-count" {
+		int count = 0;
+		int countKernel = 0;
+		int countDesktop = 0;
+		int countApps = 0;
+		int countBoot = 0;
+		int countDrivers = 0;
+		int countHelp = 0;
+		int countShared = 0;
+		int countArch = 0;
+		int countOther = 0;
+
+		str[] files = DirectoryEnumerateRecursively("."):assert();
+
+		for str file in files {
+			bool ignore = file == "tags" || StringStartsWith(file, "bin/") || StringStartsWith(file, "cross/") || StringStartsWith(file, ".") 
+				|| StringStartsWith(file, "old/") || StringStartsWith(file, "root/") || StringStartsWith(file, "ports/")
+				|| file == "util/hsluv.h" || file == "util/luigi.h" || file == "util/stb_ds.h" || file == "util/script.c"
+				|| file == "util/nanosvg.h" || file == "util/stb_truetype.h" || file == "res/Keyboard Layouts/index.ini";
+
+			bool isSourceFile = StringEndsWith(file, ".c") || StringEndsWith(file, ".cpp") || StringEndsWith(file, ".h")
+				|| StringEndsWith(file, ".header") || StringEndsWith(file, ".ini") || StringEndsWith(file, ".ld")
+				|| StringEndsWith(file, ".md") || StringEndsWith(file, ".s") || StringEndsWith(file, ".script") || StringEndsWith(file, ".sh");
+
+			bool isInfoUpdates = file == "info/UPDATES";
+
+			if !ignore && (isSourceFile || isInfoUpdates) {
+				int c = StringSplitByCharacter(FileReadAll(file):assert(), "\n", false):len();
+				count += c;
+
+				if StringStartsWith(file, "kernel/") countKernel += c;
+				else if StringStartsWith(file, "desktop/") countDesktop += c;
+				else if StringStartsWith(file, "apps/") countApps += c;
+				else if StringStartsWith(file, "boot/") countBoot += c;
+				else if StringStartsWith(file, "drivers/") countDrivers += c;
+				else if file == "info/UPDATES" countHelp += c;
+				else if StringStartsWith(file, "shared/") countShared += c;
+				else if StringStartsWith(file, "arch/") countArch += c;
+				else countOther += c;
+			}
+		}
+
+		Log("Total line count: %TextColorHighlight()%%count%");
+		Log("- Kernel:  %TextColorHighlight()%%countKernel%");
+		Log("- Desktop: %TextColorHighlight()%%countDesktop%");
+		Log("- Apps:    %TextColorHighlight()%%countApps%");
+		Log("- Boot:    %TextColorHighlight()%%countBoot%");
+		Log("- Drivers: %TextColorHighlight()%%countDrivers%");
+		Log("- Info:    %TextColorHighlight()%%countHelp%");
+		Log("- Shared:  %TextColorHighlight()%%countShared%");
+		Log("- Arch:    %TextColorHighlight()%%countArch%");
+		Log("- Other:   %TextColorHighlight()%%countOther%");
+	} else if StringStartsWith(command, "do ") {
+		SystemShellExecute(StringSlice(command, 3, command:len()));
+	} else if command == "build-optional-ports" {
+		port.StartWithOptions("all", false, true, targetName, targetToolchainPrefix);
+	} else if StringStartsWith(command, "build-port ") {
+		port.StartWithOptions(StringSlice(command, 11, command:len()), false, false, targetName, targetToolchainPrefix);
+	} else if command == "build-port" {
+		Log("");
+		port.StartWithOptions("", false, false, targetName, targetToolchainPrefix);
+		Log("\nMost ports require the POSIX subsystem to be enabled.\n"
+				+ "If you haven't enabled it, run %TextColorHighlight()%config%TextPlain()% and "
+				+ "select %TextColorHighlight()%Flag.ENABLE_POSIX_SUBSYSTEM%TextPlain()%.\n"
+				+ "\nEnter the port to be built: ");
+		port.StartWithOptions(StringTrim(ConsoleGetLine()), false, false, targetName, targetToolchainPrefix);
+	} else if command == "get-toolchain" {
+		port.StartWithOptions("gcc", true, false, targetName, targetToolchainPrefix);
+		compilerPath = port.compilerPath;
+		compilerIndex = currentCompilerIndex;
+	// build-fix used in .light.sh if error
+	} else if command == "build-fix" { // If error in build (No build) run this in .light.sh
+		PathDeleteRecursively("bin/freetype"); // Delete freetype (Error build in makefile)
+		port.StartWithOptions("freetype", false, true, targetName, targetToolchainPrefix); // Build freetype again
+		port.StartWithOptions("uxn", false, true, targetName, targetToolchainPrefix); // Build uxn (+)
+		SystemShellExecute("bin/build b"); // Build again all                          Here down
+		port.StartWithOptions("all", false, true, targetName, targetToolchainPrefix);////////////
+		SystemShellExecute("bin/build b"); // Build again all                          Here up
+		SystemShellExecute("make build"); // Make build (If all error fixed)
+		
+	} else {
+		SystemShellExecute("bin/build %command%");
+	}
+}
+
+void Start() {
+	Setup(false);
+	PathDelete("bin/dependency_files/dependencies.ini");
+
+	if (options == "") {
+		Log("%TextColorHighlight()%Light Build%TextPlain()%\nPress Ctrl-C to exit.");
+		Log("Cross target is %TextColorHighlight()%%targetName%%TextPlain()%.");
+		Log("Enter 'help' to get a list of commands.");
+
+		str previousCommand = "help";
+		bool running = true;
+
+		while running {
+			ConsoleWriteStderr("\n> %TextColorHighlight()%");
+			str command = StringTrim(ConsoleGetLine());
+			ConsoleWriteStderr(TextPlain());
+
+			if command == "" {
+				command = previousCommand;
+				Log("(%command%)");
+			}
+
+			if command == "exit" || command == "x" || command == "quit" || command == "q" {
+				running = false;
+			} else {
+				DoCommand(command);
+				previousCommand = command;
+			}
+		}
+	} else {
+		DoCommand(options);
+	}
+}
+
+/////////////////////////////////////////////////////////////
+// Automation scripts
+/////////////////////////////////////////////////////////////
+
+void GenerateOVF() {
+	str[] template = StringSplitByCharacter(FileReadAll("util/template.ovf"):assert(), "$", true);
+	assert template:len() == 5;
+	str uuid1 = UUIDGenerate();
+	str uuid2 = UUIDGenerate();
+	int driveSize = FileGetSize("bin/drive"):assert();
+	assert driveSize > 0;
+	str result = template[0] + "%driveSize%" + template[1] + uuid1 + template[2] + uuid2 + template[3] + uuid1 + template[4];
+	assert FileWriteAll("bin/ova/Light.ovf", result);
+}
+
+void DeleteUnneededDirectoriesForDebugInfo() {
+	PathDeleteRecursively("cross");
+	PathDeleteRecursively("Light");
+	PathDeleteRecursively("bin/ova");
+	PathDeleteRecursively("bin/cache");
+	PathDeleteRecursively("bin/freetype");
+	PathDeleteRecursively("bin/harfbuzz");
+	PathDeleteRecursively("bin/musl");
+	PathDeleteRecursively("bin/root/Applications/POSIX/lib");
+	PathDeleteRecursively(".git");
+}
+
+void GenerateAPISamples() {
+	str sourceFolder = "apps/samples/";
+	str destinationFolder = "root/API Samples/";
+
+	for str configFile in DirectoryEnumerate(sourceFolder):assert() {
+		if StringEndsWith(configFile, ".ini") {
+			str[] config = StringSplitByCharacter(FileReadAll(sourceFolder + configFile):assert(), "\n", false);
+			str sourceFile;
+			str applicationName;
+			str section;
+
+			for str line in config {
+				if line[0] == "[" section = line;
+				if section == "[general]" && StringStartsWith(line, "name=") applicationName = StringSlice(line, 5, line:len());
+				if section == "[build]" && StringStartsWith(line, "source=") sourceFile = StringSlice(line, 7, line:len());
+			}
+
+			assert applicationName != "";
+			assert StringStartsWith(sourceFile, "apps/samples/");
+			sourceFile = StringSlice(sourceFile, 13, sourceFile:len());
+
+			Log("%applicationName%, %sourceFile%, %configFile%");
+
+			str folder = destinationFolder + applicationName + "/";
+			assert PathCreateLeadingDirectories(folder);
+			assert FileCopy(sourceFolder + sourceFile, folder + sourceFile);
+
+			for int i = 0; i < config:len(); i += 1 {
+				str line = config[i];
+				if line[0] == "[" section = line;
+				if section == "[build]" && StringStartsWith(line, "source=") config[i] = "source=" + sourceFile;
+			}
+
+			assert FileWriteAll(folder + "make.build_core", StringJoin(config, "\n", false));
+		}
+	}
+}
+
+void AutomationBuild() {
+	// TODO:
+	// Copy the source onto the drive for self hosting.
+	// Producing installer images (including for real hardware).
+
+	Setup(true);
+
+	// Create directories.
+	assert PathCreateLeadingDirectories("bin/ova");
+	assert PathCreateLeadingDirectories("root/Demo Content");
+	assert PathCreateLeadingDirectories("root/API Samples");
+	assert PathCreateLeadingDirectories("Light/Licenses");
+
+	// Setup the config file.
+	assert FileWriteAll("bin/config.ini", "Flag.DEBUG_BUILD=0\n"
+			+ "Flag.ENABLE_POSIX_SUBSYSTEM=1\n"
+			+ "General.wallpaper=0:/Demo Content/Abstract.jpg\n"
+			+ "General.window_color=5\n");
+
+	// Setup toolchain, build the system and ports.
+	assert SystemShellExecute("bin/build build-optimised");
+	port.StartWithOptions("all", false, true, targetName, targetToolchainPrefix);
+
+	// Copy a few sample files.
+	assert PathCopyRecursively("res/Sample Images", "root/Demo Content");
+	assert PathCopyRecursively("help", "root/Demo Content/Documentation");
+	assert FileCopy("bin/noodle.rom", "root/Demo Content/Noodle.uxn");
+	assert FileCopy("res/A Study in Scarlet.txt", "root/Demo Content/A Study in Scarlet.txt");
+	assert FileCopy("res/Theme Source.dat", "root/Demo Content/Theme.designer");
+	assert FileCopy("res/Flip.bochsrc", "root/Demo Content/Flip.bochsrc");
+	assert FileCopy("res/Flip.img", "root/Demo Content/Flip.img");
+	assert FileCopy("res/Fonts/Atkinson Hyperlegible Regular.ttf", "root/Demo Content/Atkinson Hyperlegible Regular.ttf");
+	GenerateAPISamples();
+
+	// Enable extra applications and build them.
+	assert FileWriteAll("bin/extra_applications.ini", "util/designer2.ini\n"
+			+ "util/build_core.ini\n"
+			+ "ports/uxn/emulator.ini\n"
+			+ "ports/bochs/bochs.ini\n"
+			+ "ports/mesa/obj_viewer.ini\n");
+	assert SystemShellExecute("bin/build build-optimised");
+
+	// Create a virtual machine file.
+	assert SystemShellExecute("qemu-img convert -f raw bin/drive -O vmdk -o adapter_type=lsilogic,subformat=streamOptimized,compat6 "
+			+ "bin/ova/Light-disk001.vmdk");
+	GenerateOVF();
+	assert SystemShellExecuteWithWorkingDirectory("bin/ova", "tar -cf Light.ova Light.ovf Light-disk001.vmdk");
+
+	// Copy licenses.
+	assert FileCopy("LICENSE.txt", "Light/Licenses/Light License.txt");
+	assert FileCopy("util/nanosvg.h", "Light/Licenses/nanosvg.h");
+	assert FileCopy("util/hsluv.h", "Light/Licenses/hsluv.h");
+	assert FileCopy("util/stb_ds.h", "Light/Licenses/stb_ds.h");
+	assert FileCopy("util/stb_truetype.h", "Light/Licenses/stb_truetype.h");
+	assert FileCopy("res/Fonts/Hack License.txt", "Light/Licenses/Hack License.txt");
+	assert FileCopy("res/Fonts/Inter License.txt", "Light/Licenses/Inter License.txt");
+	assert FileCopy("res/Fonts/Atkinson Hyperlegible License.txt", "Light/Licenses/Atkinson Hyperlegible License.txt");
+	assert FileCopy("res/Fonts/OpenDyslexic License.txt", "Light/Licenses/OpenDyslexic License.txt");
+	assert FileCopy("res/elementary Icons License.txt", "Light/Licenses/elementary Icons License.txt");
+	assert FileCopy("res/Sample Images/Licenses.txt", "Light/Licenses/Sample Images.txt");
+	assert FileCopy("res/Keyboard Layouts/License.txt", "Light/Licenses/Keyboard Layouts.txt");
+	assert FileCopy("ports/acpica/licensing.txt", "Light/Licenses/ACPICA.txt");
+	assert FileCopy("ports/bochs/COPYING", "Light/Licenses/Bochs.txt");
+	assert FileCopy("ports/efitoolkit/LICENSE", "Light/Licenses/EFI.txt");
+	assert FileCopy("ports/freetype/FTL.TXT", "Light/Licenses/FreeType.txt");
+	assert FileCopy("ports/harfbuzz/LICENSE", "Light/Licenses/HarfBuzz.txt");
+	assert FileCopy("ports/md4c/LICENSE.txt", "Light/Licenses/Md4c.txt");
+	assert FileCopy("ports/musl/COPYRIGHT", "Light/Licenses/Musl.txt");
+	assert FileCopy("ports/uxn/LICENSE", "Light/Licenses/Uxn.txt");
+	assert FileCopy("bin/BusyBox License.txt", "Light/Licenses/BusyBox.txt");
+	assert FileCopy("bin/Mesa License.html", "Light/Licenses/Mesa.html");
+	assert FileCopy("bin/Nasm License.txt", "Light/Licenses/Nasm.txt");
+	assert FileCopy("bin/GCC License.txt", "Light/Licenses/GCC.txt");
+	assert FileCopy("bin/Binutils License.txt", "Light/Licenses/Binutils.txt");
+	assert FileCopy("bin/GMP License.txt", "Light/Licenses/GMP.txt");
+	assert FileCopy("bin/MPFR License.txt", "Light/Licenses/GMPF.txt");
+	assert FileCopy("bin/MPC License.txt", "Light/Licenses/MPC.txt");
+	assert FileCopy("bin/FFmpeg License/COPYING.GPLv2", "Light/Licenses/FFmpeg GPLv2.txt");
+	assert FileCopy("bin/FFmpeg License/COPYING.GPLv3", "Light/Licenses/FFmpeg GPLv3.txt");
+	assert FileCopy("bin/FFmpeg License/COPYING.LGPLv2.1", "Light/Licenses/FFmpeg LGPLv2.1.txt");
+	assert FileCopy("bin/FFmpeg License/COPYING.LGPLv3", "Light/Licenses/FFmpeg LGPLv3.txt");
+	assert FileCopy("bin/FFmpeg License/LICENSE.txt", "Light/Licenses/FFmpeg.md");
+
+	// Compress the result.
+	assert PathMove("bin/ova/Light.ova", "Light/Light.ova");
+	assert PathMove("bin/drive", "Light/drive");
+	assert FileCopy("bin/commit.txt", "Light/commit.txt");
+	assert SystemShellExecute("tar -cJf ../Light.tar.xz Light/");
+
+	// Compress the debug info.
+	DeleteUnneededDirectoriesForDebugInfo();
+	assert SystemShellExecuteWithWorkingDirectory("..", "tar -cJf debug_info.tar.xz light");
+}
+
+void AutomationBuildDefault() {
+	Setup(true);
+	port.StartWithOptions("zlib", false, true, targetName, targetToolchainPrefix);
+	port.StartWithOptions("mesa", false, true, targetName, targetToolchainPrefix);
+	assert SystemShellExecute("bin/build build");
+}
+
+void AutomationBuildMinimal() {
+	Setup(true);
+	assert FileWriteAll("bin/config.ini", "Flag.DEBUG_BUILD=0\n"
+			+ "BuildCore.NoImportPOSIX=0\n"
+			+ "BuildCore.RequiredFontsOnly=1\n"
+			+ "Emulator.PrimaryDriveMB=32\n"
+			+ "Dependency.ACPICA=0\n"
+			+ "Dependency.stb_image=0\n"
+			+ "Dependency.stb_image_write=0\n"
+			+ "Dependency.stb_sprintf=0\n"
+			+ "Dependency.FreeTypeAndHarfBuzz=0\n");
+	assert SystemShellExecute("bin/build build-optimised");
+}
+
+void AutomationRunTests() {
+	Setup(true);
+	assert FileWriteAll("bin/config.ini", "Flag.ENABLE_POSIX_SUBSYSTEM=1\n");
+	assert FileWriteAll("bin/extra_applications.ini", "desktop/api_tests.ini\n");
+	assert SystemShellExecute("bin/build build");
+	port.StartWithOptions("busybox", false, true, targetName, targetToolchainPrefix);
+	assert SystemShellExecute("bin/build run-tests");
+	DeleteUnneededDirectoriesForDebugInfo();
+	PathDelete("bin/drive");
+}
