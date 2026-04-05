@@ -4,7 +4,7 @@
 
 ## Supporters
 
-To support development, you can donate in Github Repo (This) -> Donate
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S6S71XB1IK)
 
 ## Testing
 
