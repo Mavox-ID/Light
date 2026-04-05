@@ -1,0 +1,883 @@
+This is a complete project tree created after all edits.
+The tree will not change if the project is modified.
+The dot indicates the main project directory, where apps, Makefiles, etc. are stored.
+
+OS version for this tree: 60.1415
+(60 major updates and 1415 after the major update; this is not version 601415).
+
+.
+├── apps
+│   ├── 2048.cpp
+│   ├── 2048.ini
+│   ├── bochs.ini
+│   ├── build_core.c
+│   ├── build_core.ini
+│   ├── changes
+│   │   ├── include_c11_threads_posix.h
+│   │   ├── meson.build
+│   │   ├── src_gallium_targets_osmesa_meson.build
+│   │   ├── src_util_anon_file.c
+│   │   ├── src_util_detect_os.h
+│   │   ├── src_util_os_misc.c
+│   │   └── src_util_u_thread.h
+│   ├── designer.cpp
+│   ├── designer.ini
+│   ├── emulator.ini
+│   ├── file_manager
+│   │   ├── commands.cpp
+│   │   ├── folder.cpp
+│   │   ├── main.cpp
+│   │   ├── string.cpp
+│   │   ├── type_database.cpp
+│   │   └── ui.cpp
+│   ├── file_manager.ini
+│   ├── font_book.cpp
+│   ├── font_book.ini
+│   ├── image_editor.cpp
+│   ├── image_editor.ini
+│   ├── installer.cpp
+│   ├── installer.ini
+│   ├── irc_client.cpp
+│   ├── irc_client.ini
+│   ├── license.html
+│   ├── markdown_viewer.cpp
+│   ├── markdown_viewer.ini
+│   ├── obj_viewer.c
+│   ├── obj_viewer.ini
+│   ├── posix_launcher.cpp
+│   ├── posix_launcher.ini
+│   ├── samples
+│   │   ├── converter.cpp
+│   │   ├── converter.ini
+│   │   ├── game_loop.cpp
+│   │   ├── game_loop.ini
+│   │   ├── hello.c
+│   │   ├── hello.ini
+│   │   ├── list.cpp
+│   │   └── list.ini
+│   ├── script_console.cpp
+│   ├── script_console.ini
+│   ├── system_monitor.cpp
+│   ├── system_monitor.ini
+│   ├── text_editor.cpp
+│   └── text_editor.ini
+├── arch
+│   ├── x86_32
+│   │   ├── api.s
+│   │   ├── config.ini
+│   │   ├── crti.s
+│   │   ├── crtn.s
+│   │   ├── kernel.cpp
+│   │   └── kernel.s
+│   ├── x86_64
+│   │   ├── api.s
+│   │   ├── config.ini
+│   │   ├── crti.s
+│   │   ├── crtn.s
+│   │   ├── kernel.cpp
+│   │   └── kernel.s
+│   ├── x86_pc.cpp
+│   └── x86_pc.h
+├── boot
+│   └── x86
+│       ├── lightfs-stage1.s
+│       ├── lightfs-stage2.s
+│       ├── loader.s
+│       ├── mbr-emu.s
+│       ├── mbr.s
+│       ├── uefi.c
+│       ├── uefi_loader.s
+│       └── vbe.s
+├── desktop
+│   ├── api.cpp
+│   ├── api_tests.cpp
+│   ├── api_tests.ini
+│   ├── crt1.c
+│   ├── crtglue.c
+│   ├── desktop.cpp
+│   ├── files.cpp
+│   ├── gui.cpp
+│   ├── icons.header
+│   ├── inspector.cpp
+│   ├── list_view.cpp
+│   ├── os.header
+│   ├── posix.cpp
+│   ├── prefix.h
+│   ├── profiling.cpp
+│   ├── renderer.cpp
+│   ├── settings.cpp
+│   ├── styles.header
+│   ├── syscall.cpp
+│   ├── textbox.cpp
+│   ├── text.cpp
+│   └── theme.cpp
+├── drivers
+│   ├── acpica.cpp
+│   ├── acpi.cpp
+│   ├── acpi_thermal.cpp
+│   ├── ahci.cpp
+│   ├── bga.cpp
+│   ├── ext2.cpp
+│   ├── fat.cpp
+│   ├── hda.cpp
+│   ├── i8254x.cpp
+│   ├── ide.cpp
+│   ├── INFO
+│   ├── iso9660.cpp
+│   ├── lightfs2.cpp
+│   ├── ntfs.cpp
+│   ├── nvme.cpp
+│   ├── pci.cpp
+│   ├── ps2.cpp
+│   ├── rtc.cpp
+│   ├── svga.cpp
+│   ├── usb_bulk.cpp
+│   ├── usb.cpp
+│   ├── usb_hid.cpp
+│   └── xhci.cpp
+├── info
+│   ├── INFO
+│   ├── LICENSE
+│   ├── TREE
+│   ├── UPDATES
+│   └── VERSION
+├── INFO
+├── kernel
+│   ├── cache.cpp
+│   ├── config.ini
+│   ├── drivers.cpp
+│   ├── elf.cpp
+│   ├── files.cpp
+│   ├── graphics.cpp
+│   ├── kernel.h
+│   ├── main.cpp
+│   ├── memory.cpp
+│   ├── module.h
+│   ├── networking.cpp
+│   ├── objects.cpp
+│   ├── posix.cpp
+│   ├── scheduler.cpp
+│   ├── symbols.cpp
+│   ├── synchronisation.cpp
+│   ├── syscall.cpp
+│   ├── terminal.cpp
+│   └── windows.cpp
+├── LICENSE.txt
+├── LightOS.zip
+├── .light.sh
+├── Makefile
+├── ports
+│   ├── acpica
+│   │   ├── build.sh
+│   │   ├── include
+│   │   │   ├── acapps.h
+│   │   │   ├── acbuffer.h
+│   │   │   ├── acclib.h
+│   │   │   ├── accommon.h
+│   │   │   ├── acconfig.h
+│   │   │   ├── acconvert.h
+│   │   │   ├── acdebug.h
+│   │   │   ├── acdisasm.h
+│   │   │   ├── acdispat.h
+│   │   │   ├── acevents.h
+│   │   │   ├── acexcep.h
+│   │   │   ├── acglobal.h
+│   │   │   ├── achware.h
+│   │   │   ├── acinterp.h
+│   │   │   ├── aclocal.h
+│   │   │   ├── acmacros.h
+│   │   │   ├── acnames.h
+│   │   │   ├── acnamesp.h
+│   │   │   ├── acobject.h
+│   │   │   ├── acopcode.h
+│   │   │   ├── acoutput.h
+│   │   │   ├── acparser.h
+│   │   │   ├── acpi.h
+│   │   │   ├── acpiosxf.h
+│   │   │   ├── acpixf.h
+│   │   │   ├── acpredef.h
+│   │   │   ├── acresrc.h
+│   │   │   ├── acrestyp.h
+│   │   │   ├── acstruct.h
+│   │   │   ├── actables.h
+│   │   │   ├── actbinfo.h
+│   │   │   ├── actbl1.h
+│   │   │   ├── actbl2.h
+│   │   │   ├── actbl3.h
+│   │   │   ├── actbl.h
+│   │   │   ├── actypes.h
+│   │   │   ├── acutils.h
+│   │   │   ├── acuuid.h
+│   │   │   ├── amlcode.h
+│   │   │   ├── amlresrc.h
+│   │   │   └── platform
+│   │   │       ├── acenvex.h
+│   │   │       ├── acenv.h
+│   │   │       ├── acgccex.h
+│   │   │       ├── acgcc.h
+│   │   │       └── aclight.h
+│   │   ├── libacpica.a
+│   │   └── licensing.txt
+│   ├── bochs
+│   │   ├── bochs.ini
+│   │   ├── config.cc
+│   │   ├── config.h.in
+│   │   ├── config.sub
+│   │   ├── configure.in
+│   │   ├── COPYING
+│   │   ├── gui_Makefile.in
+│   │   ├── icon16.png
+│   │   ├── icon32.png
+│   │   ├── light.cc
+│   │   ├── main.cc
+│   │   ├── Makefile.in
+│   │   ├── plugin.cc
+│   │   └── plugin.h
+│   ├── busybox
+│   │   └── config
+│   ├── efitoolkit
+│   │   ├── inc
+│   │   │   ├── aarch64
+│   │   │   │   ├── efibind.h
+│   │   │   │   ├── efilibplat.h
+│   │   │   │   └── efisetjmp_arch.h
+│   │   │   ├── arm
+│   │   │   │   ├── efibind.h
+│   │   │   │   ├── efilibplat.h
+│   │   │   │   └── efisetjmp_arch.h
+│   │   │   ├── efiapi.h
+│   │   │   ├── eficompiler.h
+│   │   │   ├── eficonex.h
+│   │   │   ├── eficon.h
+│   │   │   ├── efidebug.h
+│   │   │   ├── efidef.h
+│   │   │   ├── efidevp.h
+│   │   │   ├── efierr.h
+│   │   │   ├── efifs.h
+│   │   │   ├── efigpt.h
+│   │   │   ├── efi.h
+│   │   │   ├── efiip.h
+│   │   │   ├── efilib.h
+│   │   │   ├── efilink.h
+│   │   │   ├── efinet.h
+│   │   │   ├── efi_nii.h
+│   │   │   ├── efipart.h
+│   │   │   ├── efipciio.h
+│   │   │   ├── efipoint.h
+│   │   │   ├── efiprot.h
+│   │   │   ├── efipxebc.h
+│   │   │   ├── efi_pxe.h
+│   │   │   ├── efirtlib.h
+│   │   │   ├── efiser.h
+│   │   │   ├── efisetjmp.h
+│   │   │   ├── efishell.h
+│   │   │   ├── efishellintf.h
+│   │   │   ├── efistdarg.h
+│   │   │   ├── efitcp.h
+│   │   │   ├── efiudp.h
+│   │   │   ├── efiui.h
+│   │   │   ├── ia32
+│   │   │   │   ├── efibind.h
+│   │   │   │   ├── efilibplat.h
+│   │   │   │   ├── efisetjmp_arch.h
+│   │   │   │   └── pe.h
+│   │   │   ├── ia64
+│   │   │   │   ├── efibind.h
+│   │   │   │   ├── efilibplat.h
+│   │   │   │   ├── efisetjmp_arch.h
+│   │   │   │   ├── pe.h
+│   │   │   │   └── salproc.h
+│   │   │   ├── inc.mak
+│   │   │   ├── lib.h
+│   │   │   ├── libsmbios.h
+│   │   │   ├── Makefile
+│   │   │   ├── makefile.hdr
+│   │   │   ├── make.inf
+│   │   │   ├── mips64el
+│   │   │   │   ├── efibind.h
+│   │   │   │   ├── efilibplat.h
+│   │   │   │   └── efisetjmp_arch.h
+│   │   │   ├── pci22.h
+│   │   │   ├── protocol
+│   │   │   │   ├── adapterdebug.h
+│   │   │   │   ├── eficonsplit.h
+│   │   │   │   ├── efidbg.h
+│   │   │   │   ├── efivar.h
+│   │   │   │   ├── ia64
+│   │   │   │   │   └── eficontext.h
+│   │   │   │   ├── intload.h
+│   │   │   │   ├── legacyboot.h
+│   │   │   │   ├── makefile.hdr
+│   │   │   │   ├── make.inf
+│   │   │   │   ├── piflash64.h
+│   │   │   │   ├── readme.txt
+│   │   │   │   └── vgaclass.h
+│   │   │   ├── riscv64
+│   │   │   │   ├── efibind.h
+│   │   │   │   ├── efilibplat.h
+│   │   │   │   └── efisetjmp_arch.h
+│   │   │   ├── romload.h
+│   │   │   └── x86_64
+│   │   │       ├── efibind.h
+│   │   │       ├── efilibplat.h
+│   │   │       ├── efisetjmp_arch.h
+│   │   │       └── pe.h
+│   │   └── LICENSE
+│   ├── freetype
+│   │   ├── FTL.TXT
+│   │   ├── patch-ftoption.h
+│   │   ├── patch-ftstdlib.h
+│   │   └── patch-modules.cfg
+│   ├── gcc
+│   │   ├── changes
+│   │   │   ├── binutils_bfd_config.bfd
+│   │   │   ├── binutils_config.sub
+│   │   │   ├── binutils_gas_configure.tgt
+│   │   │   ├── binutils_ld_configure.tgt
+│   │   │   ├── gcc_config.sub
+│   │   │   ├── gcc_fixincludes_mkfixinc.sh
+│   │   │   ├── gcc_gcc_config.gcc
+│   │   │   ├── gcc_gcc_config_host_darwin.c
+│   │   │   ├── gcc_gcc_config_i386_t-x86_64-light
+│   │   │   ├── gcc_gcc_config_light.h
+│   │   │   ├── gcc_libgcc_config.host
+│   │   │   └── gcc_libstdc++-v3_configure
+│   │   ├── COPYING3
+│   │   ├── hello.c
+│   │   └── notes.txt
+│   ├── harfbuzz
+│   │   ├── LICENSE
+│   │   └── light-config.h
+│   ├── INFO
+│   ├── lzma
+│   │   ├── 7zFile.c
+│   │   ├── 7zFile.h
+│   │   ├── 7zStream.c
+│   │   ├── 7zTypes.h
+│   │   ├── 7zVersion.h
+│   │   ├── Alloc.c
+│   │   ├── Alloc.h
+│   │   ├── Compiler.h
+│   │   ├── CpuArch.c
+│   │   ├── CpuArch.h
+│   │   ├── LzFind.c
+│   │   ├── LzFind.h
+│   │   ├── LzFindMt.c
+│   │   ├── LzFindMt.h
+│   │   ├── LzHash.h
+│   │   ├── LzmaDec.c
+│   │   ├── LzmaDec.h
+│   │   ├── LzmaEnc.c
+│   │   ├── LzmaEnc.h
+│   │   ├── LzmaUtil.c
+│   │   ├── Precomp.h
+│   │   ├── Threads.c
+│   │   └── Threads.h
+│   ├── md4c
+│   │   ├── LICENSE.md
+│   │   ├── md4c.c
+│   │   └── md4c.h
+│   ├── mesa
+│   │   ├── changes
+│   │   │   ├── include_c11_threads_posix.h
+│   │   │   ├── meson.build
+│   │   │   ├── src_gallium_targets_osmesa_meson.build
+│   │   │   ├── src_util_anon_file.c
+│   │   │   ├── src_util_detect_os.h
+│   │   │   ├── src_util_os_misc.c
+│   │   │   └── src_util_u_thread.h
+│   │   ├── license.html
+│   │   ├── obj_viewer.c
+│   │   └── obj_viewer.ini
+│   ├── musl
+│   │   ├── changes
+│   │   │   ├── arch_x86_64_syscall_arch.h
+│   │   │   ├── config.mak
+│   │   │   ├── dist_config.mak
+│   │   │   ├── src_env___init_tls.c
+│   │   │   ├── src_process_x86_64_vfork.s
+│   │   │   ├── src_signal_x86_64_restore.s
+│   │   │   ├── src_thread_x86_64_clone.s
+│   │   │   ├── src_thread_x86_64_syscall_cp.s
+│   │   │   └── src_thread_x86_64___unmapself.s
+│   │   ├── COPYRIGHT
+│   │   ├── empty.a
+│   │   ├── libc.a
+│   │   ├── obj_bits_x86_32
+│   │   │   └── bits
+│   │   │       ├── alltypes.h
+│   │   │       └── syscall.h
+│   │   └── obj_bits_x86_64
+│   │       └── bits
+│   │           ├── alltypes.h
+│   │           └── syscall.h
+│   ├── port.script
+│   └── uxn
+│       ├── emulator.c
+│       ├── emulator.ini
+│       └── LICENSE
+├── res
+│   ├── 2048_icon16.png
+│   ├── 2048_icon32.png
+│   ├── 3D
+│   │   ├── cow.obj
+│   │   └── Teapot.obj
+│   ├── A Study in Scarlet.txt
+│   ├── bg
+│   │   ├── Astra.jpg
+│   │   ├── Aurora.jpg
+│   │   ├── Blue.jpg
+│   │   ├── Desert.jpg
+│   │   ├── Flower.jpg
+│   │   ├── Jellyfish.jpg
+│   │   ├── LICENSE
+│   │   ├── Moon.jpg
+│   │   ├── Paint.jpg
+│   │   ├── press_on.jpg
+│   │   └── Waves.jpg
+│   ├── Cursors.png
+│   ├── elementary Icons.dat
+│   ├── elementary Icons License.txt
+│   ├── Fonts
+│   │   ├── Atkinson Hyperlegible Bold Italic.ttf
+│   │   ├── Atkinson Hyperlegible Bold.ttf
+│   │   ├── Atkinson Hyperlegible License.txt
+│   │   ├── Atkinson Hyperlegible Regular Italic.ttf
+│   │   ├── Atkinson Hyperlegible Regular.ttf
+│   │   ├── Bitmap Sans Bold 9.font
+│   │   ├── Bitmap Sans Regular 9.font
+│   │   ├── Hack Bold Italic.ttf
+│   │   ├── Hack Bold.ttf
+│   │   ├── Hack License.txt
+│   │   ├── Hack Regular Italic.ttf
+│   │   ├── Hack Regular.ttf
+│   │   ├── Inter Black Italic.otf
+│   │   ├── Inter Black.otf
+│   │   ├── Inter Bold Italic.otf
+│   │   ├── Inter Bold.otf
+│   │   ├── Inter Extra Bold Italic.otf
+│   │   ├── Inter Extra Bold.otf
+│   │   ├── Inter Extra Light Italic.otf
+│   │   ├── Inter Extra Light.otf
+│   │   ├── Inter License.txt
+│   │   ├── Inter Light Italic.otf
+│   │   ├── Inter Light.otf
+│   │   ├── Inter Medium Italic.otf
+│   │   ├── Inter Medium.otf
+│   │   ├── Inter Regular Italic.otf
+│   │   ├── Inter Regular.otf
+│   │   ├── Inter Semi Bold Italic.otf
+│   │   ├── Inter Semi Bold.otf
+│   │   ├── Inter Thin Italic.otf
+│   │   ├── Inter Thin.otf
+│   │   ├── OpenDyslexic Bold Italic.otf
+│   │   ├── OpenDyslexic Bold.otf
+│   │   ├── OpenDyslexic License.txt
+│   │   ├── OpenDyslexic Regular Italic.otf
+│   │   └── OpenDyslexic Regular.otf
+│   ├── FOS
+│   │   ├── Flip.bochsrc
+│   │   ├── Flip.img
+│   │   └── Story
+│   │       └── A Study in Scarlet.txt
+│   ├── Keyboard Layouts
+│   │   ├── af.dat
+│   │   ├── al.dat
+│   │   ├── am.dat
+│   │   ├── at.dat
+│   │   ├── au.dat
+│   │   ├── az.dat
+│   │   ├── bd.dat
+│   │   ├── be.dat
+│   │   ├── bg.dat
+│   │   ├── br.dat
+│   │   ├── bt.dat
+│   │   ├── bw.dat
+│   │   ├── by.dat
+│   │   ├── ca.dat
+│   │   ├── cd.dat
+│   │   ├── ch.dat
+│   │   ├── cm.dat
+│   │   ├── cn.dat
+│   │   ├── cz.dat
+│   │   ├── de.dat
+│   │   ├── dk.dat
+│   │   ├── dz.dat
+│   │   ├── ee.dat
+│   │   ├── es.dat
+│   │   ├── et.dat
+│   │   ├── extract_keymaps.c
+│   │   ├── fi.dat
+│   │   ├── fo.dat
+│   │   ├── fr.dat
+│   │   ├── gb.dat
+│   │   ├── ge.dat
+│   │   ├── gh.dat
+│   │   ├── gr.dat
+│   │   ├── hr.dat
+│   │   ├── hu.dat
+│   │   ├── id.dat
+│   │   ├── ie.dat
+│   │   ├── il.dat
+│   │   ├── in.dat
+│   │   ├── index.ini
+│   │   ├── iq.dat
+│   │   ├── ir.dat
+│   │   ├── is.dat
+│   │   ├── it.dat
+│   │   ├── jp.dat
+│   │   ├── jv.dat
+│   │   ├── ke.dat
+│   │   ├── kg.dat
+│   │   ├── kh.dat
+│   │   ├── kr.dat
+│   │   ├── kz.dat
+│   │   ├── la.dat
+│   │   ├── License.txt
+│   │   ├── lk.dat
+│   │   ├── lt.dat
+│   │   ├── lv.dat
+│   │   ├── md.dat
+│   │   ├── me.dat
+│   │   ├── mk.dat
+│   │   ├── ml.dat
+│   │   ├── mm.dat
+│   │   ├── mn.dat
+│   │   ├── mt.dat
+│   │   ├── mv.dat
+│   │   ├── my.dat
+│   │   ├── ng.dat
+│   │   ├── nl.dat
+│   │   ├── no.dat
+│   │   ├── np.dat
+│   │   ├── ph.dat
+│   │   ├── pk.dat
+│   │   ├── pl.dat
+│   │   ├── pt.dat
+│   │   ├── ro.dat
+│   │   ├── rs.dat
+│   │   ├── ru.dat
+│   │   ├── se.dat
+│   │   ├── si.dat
+│   │   ├── sk.dat
+│   │   ├── sn.dat
+│   │   ├── sy.dat
+│   │   ├── tg.dat
+│   │   ├── th.dat
+│   │   ├── tj.dat
+│   │   ├── tr.dat
+│   │   ├── tw.dat
+│   │   ├── tz.dat
+│   │   ├── ua.dat
+│   │   ├── us.dat
+│   │   ├── uz.dat
+│   │   ├── vn.dat
+│   │   └── za.dat
+│   ├── Sample Images
+│   │   ├── Abstract.jpg
+│   │   ├── Aurora.jpg
+│   │   ├── Blue.jpg
+│   │   ├── Desert.jpg
+│   │   ├── Flower.jpg
+│   │   ├── Jellyfish.jpg
+│   │   ├── Licenses.txt
+│   │   ├── Paint.jpg
+│   │   └── Waves.jpg
+│   ├── Shutdown Sound.wav
+│   ├── Startup Sound.wav
+│   ├── Theme
+│   │   ├── Theme.dat
+│   │   └── Theme Source.dat
+│   ├── Theme.dat
+│   ├── Theme Source.dat
+│   ├── uxn.png
+│   └── Varvara.jl
+│       ├── CONTRIBUTORS.md
+│       ├── deps
+│       │   └── build.jl
+│       ├── etc
+│       │   ├── asma-test.sh
+│       │   ├── tables
+│       │   │   └── tables.jl
+│       │   ├── tal.sublime-syntax
+│       │   ├── utos
+│       │   │   ├── build.jl
+│       │   │   └── utos.jl
+│       │   └── wavpcm
+│       │       ├── build.sh
+│       │       └── wavpcm.c
+│       ├── .git
+│       │   ├── config
+│       │   ├── description
+│       │   ├── HEAD
+│       │   ├── hooks
+│       │   │   ├── applypatch-msg.sample
+│       │   │   ├── commit-msg.sample
+│       │   │   ├── fsmonitor-watchman.sample
+│       │   │   ├── post-update.sample
+│       │   │   ├── pre-applypatch.sample
+│       │   │   ├── pre-commit.sample
+│       │   │   ├── pre-merge-commit.sample
+│       │   │   ├── prepare-commit-msg.sample
+│       │   │   ├── pre-push.sample
+│       │   │   ├── pre-rebase.sample
+│       │   │   ├── pre-receive.sample
+│       │   │   ├── push-to-checkout.sample
+│       │   │   ├── sendemail-validate.sample
+│       │   │   └── update.sample
+│       │   ├── index
+│       │   ├── info
+│       │   │   └── exclude
+│       │   ├── logs
+│       │   │   ├── HEAD
+│       │   │   └── refs
+│       │   │       ├── heads
+│       │   │       │   └── main
+│       │   │       └── remotes
+│       │   │           └── origin
+│       │   │               └── HEAD
+│       │   ├── objects
+│       │   │   ├── info
+│       │   │   └── pack
+│       │   │       ├── pack-0eaf299bf5a04711fc47255c2b6a905b65204c89.idx
+│       │   │       ├── pack-0eaf299bf5a04711fc47255c2b6a905b65204c89.pack
+│       │   │       └── pack-0eaf299bf5a04711fc47255c2b6a905b65204c89.rev
+│       │   ├── packed-refs
+│       │   └── refs
+│       │       ├── heads
+│       │       │   └── main
+│       │       └── remotes
+│       │           └── origin
+│       │               └── HEAD
+│       ├── .gitignore
+│       ├── .gitmodules
+│       ├── LICENSE.md
+│       ├── Manifest.toml
+│       ├── projects
+│       │   ├── examples
+│       │   │   ├── blank.tal
+│       │   │   ├── demos
+│       │   │   │   ├── asma-piano.tal
+│       │   │   │   ├── automata.tal
+│       │   │   │   ├── bifurcan.tal
+│       │   │   │   ├── darena.tal
+│       │   │   │   ├── drum-rack.tal
+│       │   │   │   ├── font.tal
+│       │   │   │   ├── life.tal
+│       │   │   │   ├── move.tal
+│       │   │   │   ├── piano.tal
+│       │   │   │   ├── polycat.tal
+│       │   │   │   ├── prng.tal
+│       │   │   │   └── theme.tal
+│       │   │   ├── devices
+│       │   │   │   ├── audio.channels.tal
+│       │   │   │   ├── audio.tal
+│       │   │   │   ├── console.echo.tal
+│       │   │   │   ├── console.lib.tal
+│       │   │   │   ├── console.tal
+│       │   │   │   ├── controller.tal
+│       │   │   │   ├── datetime.tal
+│       │   │   │   ├── file.load.tal
+│       │   │   │   ├── file.save.tal
+│       │   │   │   ├── file.tal
+│       │   │   │   ├── mouse.tal
+│       │   │   │   └── screen.tal
+│       │   │   ├── exercises
+│       │   │   │   ├── fizzbuzz.tal
+│       │   │   │   └── primes.tal
+│       │   │   └── gui
+│       │   │       ├── animation.tal
+│       │   │       ├── hover.tal
+│       │   │       ├── label.tal
+│       │   │       ├── picture.tal
+│       │   │       ├── proportional-font.tal
+│       │   │       ├── shapes.tal
+│       │   │       └── wallpaper.tal
+│       │   ├── fonts
+│       │   │   ├── acorn8-italic.uf1
+│       │   │   ├── acorn8-regular.uf1
+│       │   │   ├── atari8.uf1
+│       │   │   ├── bbcmicro8.uf1
+│       │   │   ├── chicago12.uf2
+│       │   │   ├── diamond12.uf2
+│       │   │   ├── diamond20.uf3
+│       │   │   ├── geneva12.uf2
+│       │   │   ├── geneva14.uf2
+│       │   │   ├── geneva24.uf3
+│       │   │   ├── helvetica12.uf2
+│       │   │   ├── helvetica14.uf2
+│       │   │   ├── helvetica24.uf3
+│       │   │   ├── left8.uf1
+│       │   │   ├── losangeles12.uf2
+│       │   │   ├── newyork12.uf2
+│       │   │   ├── newyork14.uf2
+│       │   │   ├── newyork24.uf3
+│       │   │   ├── orca8.uf1
+│       │   │   ├── palatino12.uf2
+│       │   │   ├── palatino14.uf2
+│       │   │   ├── palatino24.uf3
+│       │   │   ├── sans10-bold.uf2
+│       │   │   ├── sans10-regular.uf2
+│       │   │   ├── sapphire14.uf2
+│       │   │   ├── sapphire19.uf3
+│       │   │   ├── specter8.uf1
+│       │   │   ├── terminal12.uf2
+│       │   │   ├── times12.uf2
+│       │   │   ├── times15.uf2
+│       │   │   ├── times24.uf3
+│       │   │   └── venice14.uf2
+│       │   ├── library
+│       │   │   ├── asma.tal
+│       │   │   ├── binary-tree.tal
+│       │   │   ├── file-read-chunks.tal
+│       │   │   ├── heap.tal
+│       │   │   ├── load-rom.tal
+│       │   │   └── string.tal
+│       │   ├── pictures
+│       │   │   ├── akane2010.bit
+│       │   │   ├── ako10x10.chr
+│       │   │   ├── cibo.bit
+│       │   │   ├── cyr10x8.chr
+│       │   │   ├── dafu80x80.bit
+│       │   │   ├── daria10x10.chr
+│       │   │   ├── ergo100x0c0.bit
+│       │   │   ├── felix0cx0c.chr
+│       │   │   ├── logo1x1.bit
+│       │   │   ├── macpaint4020.bit
+│       │   │   ├── pc98.chr
+│       │   │   ├── tima2a1a.bit
+│       │   │   ├── zerotwo10x10.chr
+│       │   │   └── zerotwo20x20.chr
+│       │   ├── software
+│       │   │   ├── asma.tal
+│       │   │   ├── calc.tal
+│       │   │   ├── hexes.tal
+│       │   │   ├── launcher.tal
+│       │   │   └── neralie.tal
+│       │   └── sounds
+│       │       ├── bdr1.pcm
+│       │       ├── bdr2.pcm
+│       │       ├── chat.pcm
+│       │       ├── cym1.pcm
+│       │       ├── hhat.pcm
+│       │       ├── kck1.pcm
+│       │       ├── kck2.pcm
+│       │       ├── ohat.pcm
+│       │       ├── pad1.pcm
+│       │       ├── pad2.pcm
+│       │       ├── piano.pcm
+│       │       ├── ride.pcm
+│       │       ├── saw.pcm
+│       │       ├── sid1.pcm
+│       │       ├── sid2.pcm
+│       │       ├── sin.pcm
+│       │       ├── snr1.pcm
+│       │       ├── snr2.pcm
+│       │       ├── sqr.pcm
+│       │       ├── sub1.pcm
+│       │       ├── syn1.pcm
+│       │       ├── syn2.pcm
+│       │       ├── tri.pcm
+│       │       └── violin.pcm
+│       ├── Project.toml
+│       ├── README.md
+│       ├── snarf.tmp
+│       ├── src
+│       │   ├── blank.tal
+│       │   ├── devices
+│       │   │   ├── apu.jl
+│       │   │   └── ppu.jl
+│       │   ├── hello.rom
+│       │   ├── hello.tal
+│       │   ├── macro.tal
+│       │   ├── snarf.tmp
+│       │   ├── uxnasm.c
+│       │   ├── uxnasm.jl
+│       │   ├── uxncli.jl
+│       │   ├── uxndbg.jl
+│       │   ├── uxnemu.jl
+│       │   ├── uxngdbg.jl
+│       │   ├── uxn.jl
+│       │   ├── uxnrepl.jl
+│       │   ├── uxntal.jl
+│       │   ├── Varvara.jl
+│       │   ├── vvbios.jl
+│       │   ├── vvdocs.jl
+│       │   ├── vvos.jl
+│       │   └── vvutils.jl
+│       ├── test
+│       │   └── runtests.jl
+│       ├── uxn11
+│       ├── uxnasm
+│       └── .vscode
+│           ├── launch.json
+│           └── settings.json
+├── shared
+│   ├── arena.cpp
+│   ├── array.cpp
+│   ├── avl_tree.cpp
+│   ├── bitmap_font.h
+│   ├── bitset.cpp
+│   ├── common.cpp
+│   ├── crc.h
+│   ├── fat.cpp
+│   ├── hash_table.cpp
+│   ├── heap.cpp
+│   ├── ini.h
+│   ├── lightfs2.h
+│   ├── linked_list.cpp
+│   ├── math.cpp
+│   ├── partitions.cpp
+│   ├── png_decoder.cpp
+│   ├── range_set.cpp
+│   ├── stb_image.h
+│   ├── stb_image_write.h
+│   ├── stb_sprintf.h
+│   ├── strings.cpp
+│   ├── unicode.cpp
+│   └── vga_font.cpp
+└── util
+    ├── api_table.ini
+    ├── bochs.ini
+    ├── build.c
+    ├── build_common.h
+    ├── build_core.c
+    ├── build_core.ini
+    ├── config_editor.c
+    ├── designer2.cpp
+    ├── designer2.ini
+    ├── extract_log.c
+    ├── font_editor.c
+    ├── get_source.script
+    ├── header_generator.c
+    ├── hsluv.h
+    ├── linker
+    │   ├── api64.ld
+    │   ├── kernel32.ld
+    │   ├── kernel64.ld
+    │   ├── userland32.ld
+    │   └── userland64.ld
+    ├── luigi.h
+    ├── nanosvg.h
+    ├── render_svg.c
+    ├── script.c
+    ├── start.script
+    ├── stb_ds.h
+    ├── stb_truetype.h
+    ├── template.ovf
+    ├── test.txt
+    ├── .todo.sh
+    ├── toolchain_wrapper.c
+    ├── uefi_compile.sh
+    ├── uefi.sh
+    ├── uefi_to_device.sh
+    ├── .utils.sh
+    ├── w32
+    │   ├── build.bat
+    │   ├── embed.cpp
+    │   └── platform.cpp
+    └── x11
+        ├── build.sh
+        └── platform.cpp
+
+96 directories, 778 files
