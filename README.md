@@ -16,6 +16,9 @@ You can then download the completed .iso or .bin file from Release, or build it 
 
 See `info/BUILD` for a description of how to build and test the system.
 
+## Warning!
+This OS created in my PC, this repo is uploaded Open Source file from my PC
+
 ## Features
 
 Kernel
