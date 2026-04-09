@@ -2,6 +2,9 @@
 
 ![Screenshot showing the file manager, text editor, and bitmap image editor.](https://github.com/Mavox-ID/Light/blob/main/res/Example.png)
 
+# RIP!
+Unfortunately, all local LightOS files were lost and destroyed. This is all that remains of LightOS. We remember and mourn these 5 years of work... RIP LightOS 2021-2026
+
 ## Supporters
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S6S71XB1IK)
