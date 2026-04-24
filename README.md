@@ -2,8 +2,26 @@
 
 ![Screenshot showing the file manager, text editor, and bitmap image editor.](https://github.com/Mavox-ID/Light/blob/main/res/Example.png)
 
-# RIP!
-Unfortunately, all local LightOS files were lost and destroyed. This is all that remains of LightOS. We remember and mourn these 5 years of work... RIP LightOS 2021-2026
+# WE DON'T GIVE UP
+
+LightOS was completely destroyed - every usable copy was gone, source trees shattered, builds broken, files reduced to fragments. Most people would have declared it dead and moved on.
+
+But we didn’t.
+
+For two relentless months, the system was rebuilt piece by piece through raw HEX editing, binary recovery, manual reconstruction, and countless hours of reverse restoration. Damaged structures were repaired byte by byte. Lost components were traced, rebuilt, and brought back online.
+
+More than $200 was spent purely on HEX edits, recovery work, and bringing the project back from total collapse.
+
+And it worked.
+
+LightOS lives again.
+
+The repository is being restored right now. Files are returning. Components are coming back. The foundation is standing again.
+
+This project was destroyed.
+Now it is rebuilding stronger than before.
+
+WE DON'T GIVE UP.
 
 ## Supporters
 
