@@ -973,6 +973,32 @@ int ListCallback(EsElement *element, EsMessage *message) {
 		EsMenuAddSeparator(menu);
 		EsMenuAddCommand(menu, LT_FLAGS_DEFAULT, INTERFACE_STRING(FileManagerRenameAction), &instance->commandRename);
                 EsMenuAddCommand(menu, LT_FLAGS_DEFAULT, "Delete", -1, &instance->commandDelete);
+
+		if (openWithAppID && !entry->entry->isFolder) {
+			EsMenuAddSeparator(menu);
+			EsMenuAddItem(menu, LT_FLAGS_DEFAULT, EsLiteral("Open file as..."),
+				[] (EsMenu *menu, EsGeneric context) {
+					Instance *instance = (Instance *) menu->instance;
+					uintptr_t index = context.u;
+
+					if (index >= instance->listContents.Length()) return;
+
+					ListEntry *le = &instance->listContents[index];
+					String filePath = instance->folder->itemHandler->getPathForChild(instance->folder, le->entry);
+
+					EsApplicationStartupRequest req = {};
+					req.id = openWithAppID;
+					req.filePath = filePath.text;
+					req.filePathBytes = filePath.bytes;
+					req.flags = LT_APPLICATION_STARTUP_NO_DOCUMENT;
+					EsApplicationStart(instance, &req);
+
+					StringDestroy(&filePath);
+				},
+				(uintptr_t) message->selectItem.index
+			);
+		}
+
 		EsMenuShow(menu);
 	} else if (message->type == LT_MSG_MOUSE_RIGHT_CLICK) {
 		EsMenu *menu = EsMenuCreate(element, LT_MENU_AT_CURSOR);

@@ -248,6 +248,8 @@ HashStore<uint64_t, Thumbnail> thumbnailCache;
 
 Array<String> openDocuments;
 
+int64_t openWithAppID = 0;
+
 // Styles.
 
 const EsStyle styleFolderView = {
@@ -531,6 +533,30 @@ void _start() {
 
 	AddKnownFileTypes();
 	LoadSettings();
+
+	{
+		size_t cfgBytes;
+		char *cfgData = (char *) EsFileReadAll(EsLiteral("0:/Light/Default.ini"), &cfgBytes);
+		if (cfgData) {
+			EsINIState s = { .buffer = cfgData, .bytes = cfgBytes };
+			bool inApp = false, nameMatch = false;
+			int64_t foundId = 0;
+			while (EsINIParse(&s)) {
+				if (!s.keyBytes) {
+					if (inApp && nameMatch && foundId) { openWithAppID = foundId; break; }
+					inApp = (0 == EsStringCompareRaw(s.section, s.sectionBytes, EsLiteral("application")));
+					nameMatch = false; foundId = 0;
+				} else if (inApp) {
+					if (0 == EsStringCompareRaw(s.key, s.keyBytes, EsLiteral("name")))
+						nameMatch = (0 == EsStringCompareRaw(s.value, s.valueBytes, EsLiteral("Open With")));
+					else if (0 == EsStringCompareRaw(s.key, s.keyBytes, EsLiteral("id")))
+						foundId = EsIntegerParse(s.value, s.valueBytes);
+				}
+			}
+			if (inApp && nameMatch && foundId) openWithAppID = foundId;
+			EsHeapFree(cfgData);
+		}
+	}
 
 	// Enumerate drives.
 
