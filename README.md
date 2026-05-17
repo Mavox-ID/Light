@@ -35,7 +35,73 @@ You can then download the completed .iso or .bin file from Release, or build it 
 
 ## Building
 
-See `info/BUILD` for a description of how to build and test the system.
+To get started:
+
+```bash
+make utils
+```
+
+After this command, check whether you have all the utility versions installed or whether you have the correct version installed for the LightOS build.
+
+### Need:
+
+#### Versioned tools:
+
+- Util: **gcc**        — req: 12.x–13.x
+- Util: **g++**        — req: 12.x–13.x
+- Util: **ld**         — req: 2.36–2.46.0
+- Util: **as**         — req: 2.36–2.46.0
+- Util: **nasm**       — req: >= 2.14
+- Util: **make**       — req: >= 4.0
+- Util: **bison**      — req: >= 3.0
+- Util: **flex**       — req: >= 2.6
+- Util: **meson**      — req: >= 0.60
+- Util: **ninja**      — req: >= 1.10
+
+#### Plain tools:
+
+- Util: **awk**        — required
+- Util: **ctags**      — required
+- Util: **curl**       — required
+- Util: **grep**       — required
+- Util: **gzip**       — required
+- Util: **sed**        — required
+- Util: **tar**        — required
+- Util: **xz**         — required
+- Util: **python3**    — required
+- Util: **git**        — required
+
+After that, make sure that you have a Linux system, also that Linux is updated to the latest version and there are no problems with `make utils`
+
+To build LightOS, you will need to build all utilities and GCC 11 specifically for LightOS (gcc-x86_64-light and g++-x86_64-light)
+
+### Once you've verified that everything is fine and there are no problems with the build, you can confidently write:
+
+```bash
+make build
+```
+
+After reading the license, type yes. Then read the GCC compiler build information:
+
+- You don't need an internet connection to build LightOS. All archives, configs, etc. are located in res/barchive and other LightOS folders.
+
+- You need approximately 3-4 GB of free space at a minimum, and 5 GB of free space at most to avoid space issues.
+
+- Make sure you're running Linux or Mac and not other operating systems, and that your system is fully updated and there are no issues with `make utils`.
+
+- You need approximately 8 GB of available RAM. It's recommended to terminate all open windows or running processes that consume a lot of memory before building.
+
+- This doesn't require root privileges like sudo, etc.; running it will automatically get everything you need. DO NOT RUN THE BUILD AS `sudo make build`!!!!!
+
+The build itself will definitely have errors like Mesa, but the script will automatically fix them due to build-fix, so don't interrupt the build, otherwise you'll have to start over.
+
+After a successful build, you'll find yourself in the LightOS terminal where you can launch LightOS with the test (t) or qemu-with-kvm (k) command.
+
+You can get the launch command by running LightOS command and then opening the file 'bin/Logs/qemu-start.log'.
+
+You can view other LightOS features in the build management terminal after the project is built and typing 'help'.
+
+I hope this build information helps you. If you encounter any issues, please send me the last 200 lines of the log from the terminal where the build script stopped, and I'll help you resolve the build issue. Alternatively, you can download the LightOS release from the official repo from bin/drive, a ready-made raw file, and an ISO file for loading onto a USB drive.
 
 ## Warning!
 This OS created in my PC, this repo is uploaded Open Source file from my PC
@@ -54,10 +120,22 @@ Kernel
 * POSIX subsystem (Terminal), capable of running GCC (G++) and some Busybox tools.
 
 Applications
+* 2048
+* Build Core
+* Designer
+* Emulator
 * File Manager
-* Text Editor
+* Font Book
+* Image Editor
+* Installer
 * IRC Client
+* LPlayer
+* Markdown Viewer
+* OBJ Viewer
+* POSIX Launcher
+* Script Console
 * System Monitor
+* Text Editor
 
 Ports
 * Bochs
@@ -82,3 +160,18 @@ Desktop
 * Tabbed windows.
 * Multi-lingual text rendering and layout with FreeType and Harfbuzz.
 
+## In development
+
+Drivers
+* Read-write filesystems: LFS, Ext2, Ext4, FAT16/32/64, NTFS.
+* Read-only filesystems: ISO9660.
+
+Applications
+* Full worked LP (Light Player) with .mp3, .waw, .mp4 etc.
+* A working Designer2 with support for changing the LightOS theme directly in the running system
+* Working communication channel IRC Client
+* And additional settings and information about the PC and system in System Monitor
+
+File Manager
+* LPP application icon in the file manager
+* When you right-click on a file, you will be given the option 'Open file as' and the choice of which .lpp application to use to open the file or open it as an executable
