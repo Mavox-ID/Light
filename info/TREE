@@ -2,8 +2,8 @@ This is a complete project tree created after all edits.
 The tree will not change if the project is modified.
 The dot indicates the main project directory, where apps, Makefiles, etc. are stored.
 
-OS version for this tree: 60.1415
-(60 major updates and 1415 after the major update; this is not version 601415).
+OS version for this tree: 60.1416
+(60 major updates and 1416 after the major update; this is not version 601416, Check VERSION file).
 
 .
 ├── apps
@@ -20,7 +20,17 @@ OS version for this tree: 60.1415
 │   │   ├── src_util_detect_os.h
 │   │   ├── src_util_os_misc.c
 │   │   └── src_util_u_thread.h
-│   ├── designer.cpp
+│   ├── Designer
+│   │   ├── array.cpp
+│   │   ├── common.cpp
+│   │   ├── crc.h
+│   │   ├── designer.cpp
+│   │   ├── hash_table.cpp
+│   │   ├── hsluv.h
+│   │   ├── luigi.h
+│   │   ├── math.cpp
+│   │   ├── renderer.cpp
+│   │   └── theme.cpp
 │   ├── designer.ini
 │   ├── emulator.ini
 │   ├── file_manager
@@ -40,6 +50,12 @@ OS version for this tree: 60.1415
 │   ├── irc_client.cpp
 │   ├── irc_client.ini
 │   ├── license.html
+│   ├── LPlayer
+│   │   ├── libc_compat.h
+│   │   ├── LPlayer.cpp
+│   │   ├── minimp3.h
+│   │   └── stb_vorbis.c
+│   ├── LPlayer.ini
 │   ├── markdown_viewer.cpp
 │   ├── markdown_viewer.ini
 │   ├── obj_viewer.c
@@ -162,9 +178,7 @@ OS version for this tree: 60.1415
 │   ├── syscall.cpp
 │   ├── terminal.cpp
 │   └── windows.cpp
-├── LICENSE.txt
-├── LightOS.zip
-├── .light.sh
+├── LICENSE
 ├── Makefile
 ├── ports
 │   ├── acpica
@@ -416,6 +430,7 @@ OS version for this tree: 60.1415
 │       ├── emulator.c
 │       ├── emulator.ini
 │       └── LICENSE
+├── README.md
 ├── res
 │   ├── 2048_icon16.png
 │   ├── 2048_icon32.png
@@ -423,6 +438,26 @@ OS version for this tree: 60.1415
 │   │   ├── cow.obj
 │   │   └── Teapot.obj
 │   ├── A Study in Scarlet.txt
+│   ├── barchive
+│   │   ├── binutils-2.36.1.tar.xz
+│   │   ├── bochs-2.6.9.tar.gz
+│   │   ├── bochs-3.0-1.x86_64.rpm
+│   │   ├── busybox-1.33.1.tar.bz2
+│   │   ├── ffmpeg-4.3.1.tar.xz
+│   │   ├── freetype
+│   │   │   ├── config.guess
+│   │   │   └── config.sub
+│   │   ├── freetype-2.9.tar.gz
+│   │   ├── gcc-11.1.0.tar.xz
+│   │   ├── gmp-6.2.1.tar.xz
+│   │   ├── harfbuzz-2.6.4.tar.xz
+│   │   ├── mesa-20.1.8.tar.xz
+│   │   ├── mpc-1.2.1.tar.gz
+│   │   ├── mpfr-4.1.0.tar.xz
+│   │   ├── musl-1.2.1.tar.gz
+│   │   ├── nasm-2.15.05.tar.xz
+│   │   ├── noodle-17b6b2d.tar.xz
+│   │   └── uxn-d2cf721.tar.xz
 │   ├── bg
 │   │   ├── Astra.jpg
 │   │   ├── Aurora.jpg
@@ -438,6 +473,7 @@ OS version for this tree: 60.1415
 │   ├── Cursors.png
 │   ├── elementary Icons.dat
 │   ├── elementary Icons License.txt
+│   ├── Example.png
 │   ├── Fonts
 │   │   ├── Atkinson Hyperlegible Bold Italic.ttf
 │   │   ├── Atkinson Hyperlegible Bold.ttf
@@ -475,11 +511,6 @@ OS version for this tree: 60.1415
 │   │   ├── OpenDyslexic License.txt
 │   │   ├── OpenDyslexic Regular Italic.otf
 │   │   └── OpenDyslexic Regular.otf
-│   ├── FOS
-│   │   ├── Flip.bochsrc
-│   │   ├── Flip.img
-│   │   └── Story
-│   │       └── A Study in Scarlet.txt
 │   ├── Keyboard Layouts
 │   │   ├── af.dat
 │   │   ├── al.dat
@@ -590,228 +621,8 @@ OS version for this tree: 60.1415
 │   │   └── Theme Source.dat
 │   ├── Theme.dat
 │   ├── Theme Source.dat
-│   ├── uxn.png
-│   └── Varvara.jl
-│       ├── CONTRIBUTORS.md
-│       ├── deps
-│       │   └── build.jl
-│       ├── etc
-│       │   ├── asma-test.sh
-│       │   ├── tables
-│       │   │   └── tables.jl
-│       │   ├── tal.sublime-syntax
-│       │   ├── utos
-│       │   │   ├── build.jl
-│       │   │   └── utos.jl
-│       │   └── wavpcm
-│       │       ├── build.sh
-│       │       └── wavpcm.c
-│       ├── .git
-│       │   ├── config
-│       │   ├── description
-│       │   ├── HEAD
-│       │   ├── hooks
-│       │   │   ├── applypatch-msg.sample
-│       │   │   ├── commit-msg.sample
-│       │   │   ├── fsmonitor-watchman.sample
-│       │   │   ├── post-update.sample
-│       │   │   ├── pre-applypatch.sample
-│       │   │   ├── pre-commit.sample
-│       │   │   ├── pre-merge-commit.sample
-│       │   │   ├── prepare-commit-msg.sample
-│       │   │   ├── pre-push.sample
-│       │   │   ├── pre-rebase.sample
-│       │   │   ├── pre-receive.sample
-│       │   │   ├── push-to-checkout.sample
-│       │   │   ├── sendemail-validate.sample
-│       │   │   └── update.sample
-│       │   ├── index
-│       │   ├── info
-│       │   │   └── exclude
-│       │   ├── logs
-│       │   │   ├── HEAD
-│       │   │   └── refs
-│       │   │       ├── heads
-│       │   │       │   └── main
-│       │   │       └── remotes
-│       │   │           └── origin
-│       │   │               └── HEAD
-│       │   ├── objects
-│       │   │   ├── info
-│       │   │   └── pack
-│       │   │       ├── pack-0eaf299bf5a04711fc47255c2b6a905b65204c89.idx
-│       │   │       ├── pack-0eaf299bf5a04711fc47255c2b6a905b65204c89.pack
-│       │   │       └── pack-0eaf299bf5a04711fc47255c2b6a905b65204c89.rev
-│       │   ├── packed-refs
-│       │   └── refs
-│       │       ├── heads
-│       │       │   └── main
-│       │       └── remotes
-│       │           └── origin
-│       │               └── HEAD
-│       ├── .gitignore
-│       ├── .gitmodules
-│       ├── LICENSE.md
-│       ├── Manifest.toml
-│       ├── projects
-│       │   ├── examples
-│       │   │   ├── blank.tal
-│       │   │   ├── demos
-│       │   │   │   ├── asma-piano.tal
-│       │   │   │   ├── automata.tal
-│       │   │   │   ├── bifurcan.tal
-│       │   │   │   ├── darena.tal
-│       │   │   │   ├── drum-rack.tal
-│       │   │   │   ├── font.tal
-│       │   │   │   ├── life.tal
-│       │   │   │   ├── move.tal
-│       │   │   │   ├── piano.tal
-│       │   │   │   ├── polycat.tal
-│       │   │   │   ├── prng.tal
-│       │   │   │   └── theme.tal
-│       │   │   ├── devices
-│       │   │   │   ├── audio.channels.tal
-│       │   │   │   ├── audio.tal
-│       │   │   │   ├── console.echo.tal
-│       │   │   │   ├── console.lib.tal
-│       │   │   │   ├── console.tal
-│       │   │   │   ├── controller.tal
-│       │   │   │   ├── datetime.tal
-│       │   │   │   ├── file.load.tal
-│       │   │   │   ├── file.save.tal
-│       │   │   │   ├── file.tal
-│       │   │   │   ├── mouse.tal
-│       │   │   │   └── screen.tal
-│       │   │   ├── exercises
-│       │   │   │   ├── fizzbuzz.tal
-│       │   │   │   └── primes.tal
-│       │   │   └── gui
-│       │   │       ├── animation.tal
-│       │   │       ├── hover.tal
-│       │   │       ├── label.tal
-│       │   │       ├── picture.tal
-│       │   │       ├── proportional-font.tal
-│       │   │       ├── shapes.tal
-│       │   │       └── wallpaper.tal
-│       │   ├── fonts
-│       │   │   ├── acorn8-italic.uf1
-│       │   │   ├── acorn8-regular.uf1
-│       │   │   ├── atari8.uf1
-│       │   │   ├── bbcmicro8.uf1
-│       │   │   ├── chicago12.uf2
-│       │   │   ├── diamond12.uf2
-│       │   │   ├── diamond20.uf3
-│       │   │   ├── geneva12.uf2
-│       │   │   ├── geneva14.uf2
-│       │   │   ├── geneva24.uf3
-│       │   │   ├── helvetica12.uf2
-│       │   │   ├── helvetica14.uf2
-│       │   │   ├── helvetica24.uf3
-│       │   │   ├── left8.uf1
-│       │   │   ├── losangeles12.uf2
-│       │   │   ├── newyork12.uf2
-│       │   │   ├── newyork14.uf2
-│       │   │   ├── newyork24.uf3
-│       │   │   ├── orca8.uf1
-│       │   │   ├── palatino12.uf2
-│       │   │   ├── palatino14.uf2
-│       │   │   ├── palatino24.uf3
-│       │   │   ├── sans10-bold.uf2
-│       │   │   ├── sans10-regular.uf2
-│       │   │   ├── sapphire14.uf2
-│       │   │   ├── sapphire19.uf3
-│       │   │   ├── specter8.uf1
-│       │   │   ├── terminal12.uf2
-│       │   │   ├── times12.uf2
-│       │   │   ├── times15.uf2
-│       │   │   ├── times24.uf3
-│       │   │   └── venice14.uf2
-│       │   ├── library
-│       │   │   ├── asma.tal
-│       │   │   ├── binary-tree.tal
-│       │   │   ├── file-read-chunks.tal
-│       │   │   ├── heap.tal
-│       │   │   ├── load-rom.tal
-│       │   │   └── string.tal
-│       │   ├── pictures
-│       │   │   ├── akane2010.bit
-│       │   │   ├── ako10x10.chr
-│       │   │   ├── cibo.bit
-│       │   │   ├── cyr10x8.chr
-│       │   │   ├── dafu80x80.bit
-│       │   │   ├── daria10x10.chr
-│       │   │   ├── ergo100x0c0.bit
-│       │   │   ├── felix0cx0c.chr
-│       │   │   ├── logo1x1.bit
-│       │   │   ├── macpaint4020.bit
-│       │   │   ├── pc98.chr
-│       │   │   ├── tima2a1a.bit
-│       │   │   ├── zerotwo10x10.chr
-│       │   │   └── zerotwo20x20.chr
-│       │   ├── software
-│       │   │   ├── asma.tal
-│       │   │   ├── calc.tal
-│       │   │   ├── hexes.tal
-│       │   │   ├── launcher.tal
-│       │   │   └── neralie.tal
-│       │   └── sounds
-│       │       ├── bdr1.pcm
-│       │       ├── bdr2.pcm
-│       │       ├── chat.pcm
-│       │       ├── cym1.pcm
-│       │       ├── hhat.pcm
-│       │       ├── kck1.pcm
-│       │       ├── kck2.pcm
-│       │       ├── ohat.pcm
-│       │       ├── pad1.pcm
-│       │       ├── pad2.pcm
-│       │       ├── piano.pcm
-│       │       ├── ride.pcm
-│       │       ├── saw.pcm
-│       │       ├── sid1.pcm
-│       │       ├── sid2.pcm
-│       │       ├── sin.pcm
-│       │       ├── snr1.pcm
-│       │       ├── snr2.pcm
-│       │       ├── sqr.pcm
-│       │       ├── sub1.pcm
-│       │       ├── syn1.pcm
-│       │       ├── syn2.pcm
-│       │       ├── tri.pcm
-│       │       └── violin.pcm
-│       ├── Project.toml
-│       ├── README.md
-│       ├── snarf.tmp
-│       ├── src
-│       │   ├── blank.tal
-│       │   ├── devices
-│       │   │   ├── apu.jl
-│       │   │   └── ppu.jl
-│       │   ├── hello.rom
-│       │   ├── hello.tal
-│       │   ├── macro.tal
-│       │   ├── snarf.tmp
-│       │   ├── uxnasm.c
-│       │   ├── uxnasm.jl
-│       │   ├── uxncli.jl
-│       │   ├── uxndbg.jl
-│       │   ├── uxnemu.jl
-│       │   ├── uxngdbg.jl
-│       │   ├── uxn.jl
-│       │   ├── uxnrepl.jl
-│       │   ├── uxntal.jl
-│       │   ├── Varvara.jl
-│       │   ├── vvbios.jl
-│       │   ├── vvdocs.jl
-│       │   ├── vvos.jl
-│       │   └── vvutils.jl
-│       ├── test
-│       │   └── runtests.jl
-│       ├── uxn11
-│       ├── uxnasm
-│       └── .vscode
-│           ├── launch.json
-│           └── settings.json
+│   └── uxn.png
+├── SECURITY.md
 ├── shared
 │   ├── arena.cpp
 │   ├── array.cpp
@@ -851,6 +662,7 @@ OS version for this tree: 60.1415
     ├── get_source.script
     ├── header_generator.c
     ├── hsluv.h
+    ├── LICENSE.lightos
     ├── linker
     │   ├── api64.ld
     │   ├── kernel32.ld
@@ -866,12 +678,10 @@ OS version for this tree: 60.1415
     ├── stb_truetype.h
     ├── template.ovf
     ├── test.txt
-    ├── .todo.sh
     ├── toolchain_wrapper.c
     ├── uefi_compile.sh
     ├── uefi.sh
     ├── uefi_to_device.sh
-    ├── .utils.sh
     ├── w32
     │   ├── build.bat
     │   ├── embed.cpp
@@ -880,4 +690,4 @@ OS version for this tree: 60.1415
         ├── build.sh
         └── platform.cpp
 
-96 directories, 778 files
+62 directories, 622 files

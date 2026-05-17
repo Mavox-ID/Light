@@ -407,7 +407,7 @@ void Build(int optimise, bool compile) {
 	system("mkdir -p root/Light/bg");
 	system("mkdir -p root/Light/3D");
 	system("mkdir -p root/Light/Theme");
-	system("mkdir -p root/Light/Games");
+	//system("mkdir -p root/Light/Games");
         system("cp -r res/bg/* root/Light/bg/");
         system("rm root/Light/bg/LICENSE");
 	system("cp -r res/3D/* root/Light/3D/");
@@ -510,6 +510,65 @@ void *TimeoutThread(void *_unused) {
 #define DEBUG_START (1)
 #define DEBUG_NONE (2)
 
+void CleanSpaces(char *s) {
+    char *src = s, *dst = s;
+    int wasSpace = 0;
+
+    while (*src) {
+        if (*src == ' ' || *src == '\t' || *src == '\n') {
+            if (!wasSpace) {
+                *dst++ = ' ';
+                wasSpace = 1;
+            }
+        } else {
+            *dst++ = *src;
+            wasSpace = 0;
+        }
+        src++;
+    }
+
+    if (dst > s && dst[-1] == ' ')
+        dst--;
+
+    *dst = 0;
+}
+
+void PrettyFormatFile(const char *path) {
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+
+    char buf[16384];
+    size_t len = fread(buf, 1, sizeof(buf) - 1, f);
+    fclose(f);
+
+    buf[len] = 0;
+
+    char out[32768];
+    int j = 0;
+
+    for (size_t i = 0; i < len; i++) {
+
+        if (i == 0 && buf[i] == ' ')
+            continue;
+
+        if (buf[i] == ' ' && buf[i + 1] == '-') {
+            out[j++] = '\n';
+            out[j++] = ' ';
+            out[j++] = ' ';
+        } else {
+            out[j++] = buf[i];
+        }
+    }
+
+    out[j] = 0;
+
+    f = fopen(path, "w");
+    if (!f) return;
+
+    fprintf(f, "%s", out);
+    fclose(f);
+}
+
 void Run(int emulator, int log, int debug) {
 	LoadOptions();
 
@@ -563,8 +622,8 @@ void Run(int emulator, int log, int debug) {
 			}
 
 			bool withAudio = IsOptionEnabled("Emulator.Audio");
-			const char *audioFlags = withAudio ? "QEMU_AUDIO_DRV=wav QEMU_WAV_PATH=bin/Logs/audio.wav " : "";
-			const char *audioFlags2 = withAudio ? "-soundhw pcspk,hda" : "";
+			const char *audioFlags = "";
+                        const char *audioFlags2 = withAudio ? "-device intel-hda -device hda-duplex,audiodev=snd0 -audiodev pa,id=snd0" : "";
 			unlink("bin/Logs/audio.wav");
 
 			const char *secondaryDriveMB = GetOptionString("Emulator.SecondaryDriveMB");
@@ -622,14 +681,27 @@ void Run(int emulator, int log, int debug) {
 			timeoutFlags[0] = 0;
 #endif
 
-			int exitCode = CallSystemF("%s %s " QEMU_EXECUTABLE " %s%s %s -m %d %s -smp cores=%d -cpu Haswell "
-					" -device qemu-xhci,id=xhci -device usb-kbd,bus=xhci.0,id=mykeyboard -device usb-mouse,bus=xhci.0,id=mymouse "
-					" -netdev user,id=u1 -device e1000,netdev=u1 -object filter-dump,id=f1,netdev=u1,file=bin/Logs/net.dat "
-					" %s %s %s %s %s %s %s %s %s ", 
-					audioFlags, IsOptionEnabled("Emulator.RunWithSudo") ? "sudo " : "", drivePrefix, driveFlags, cdromFlags, 
-					atoi(GetOptionString("Emulator.MemoryMB")), 
-					debug ? (debug == DEBUG_NONE ? "-enable-kvm" : "-s -S") : "-s", 
-					cpuCores, audioFlags2, usbFlags, usbFlags2, secondaryDriveFlags, biosFlags, serialFlags, displayFlags, timeoutFlags, logFlags);
+			char qemuFullCommand[8192]; 
+
+			snprintf(qemuFullCommand, sizeof(qemuFullCommand), "%s %s " QEMU_EXECUTABLE " %s%s %s -m %d %s -smp cores=%d -cpu Haswell "
+				" -device qemu-xhci,id=xhci -device usb-kbd,bus=xhci.0,id=mykeyboard -device usb-mouse,bus=xhci.0,id=mymouse "
+				" -netdev user,id=u1 -device e1000,netdev=u1 -object filter-dump,id=f1,netdev=u1,file=bin/Logs/net.dat "
+				" %s %s %s %s %s %s %s %s %s ",
+				audioFlags, IsOptionEnabled("Emulator.RunWithSudo") ? "sudo " : "", drivePrefix, driveFlags, cdromFlags,
+				atoi(GetOptionString("Emulator.MemoryMB")),
+				debug ? (debug == DEBUG_NONE ? "-enable-kvm" : "-s -S") : "-s",
+				cpuCores, audioFlags2, usbFlags, usbFlags2, secondaryDriveFlags, biosFlags, serialFlags, displayFlags, timeoutFlags, logFlags);
+
+			FILE *fStartLog = fopen("bin/Logs/qemu-start.log", "w");
+			if (fStartLog) {
+			        CleanSpaces(qemuFullCommand);
+				fprintf(fStartLog, "%s\n", qemuFullCommand);
+                                fclose(fStartLog);
+
+                                PrettyFormatFile("bin/Logs/qemu-start.log");
+			}
+
+			int exitCode = CallSystem(qemuFullCommand);
 
 			bool printStartupErrorMessage = exitCode != 0;
 
@@ -1300,7 +1372,27 @@ void DoCommand(const char *l) {
 		}
 
 		forceRebuild = true;
-		Compile(flags, atoi(argv[3]), label);
+		int driveSizeMB = 0;
+                if (strcmp(argv[3], "all") == 0) {
+                    FILE *f = popen("du -sm root | awk '{print $1}'", "r");
+                    if (f) {
+                        char buf[32] = {0};
+                        if (fgets(buf, sizeof(buf), f)) {
+                            driveSizeMB = atoi(buf) + 100; 
+                        }
+                        pclose(f);
+                    }
+                    
+                    if (driveSizeMB < 100) {
+                        driveSizeMB = 512;
+                    }
+                    
+                    printf("Auto-calculated drive size: %d MB\n", driveSizeMB);
+                } else {
+                    driveSizeMB = atoi(argv[3]);
+                }
+
+                Compile(flags, driveSizeMB, label);
 
 		if (encounteredErrors) {
 			printf("\033[0;33mBuild failed.\n" ColorNormal);

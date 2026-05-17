@@ -25,12 +25,6 @@ DEFINE_INTERFACE_STRING(CommonClipboardPaste, "Paste");
 DEFINE_INTERFACE_STRING(CommonSelectionSelectAll, "Select all");
 DEFINE_INTERFACE_STRING(CommonSelectionDelete, "Delete");
 
-DEFINE_INTERFACE_STRING(FileManagerDeleteAction, "Delete");
-DEFINE_INTERFACE_STRING(FileManagerDeleteSinglePrompt, "Do you want to permanently delete this object from your disk?");
-DEFINE_INTERFACE_STRING(FileManagerDeleteMultiplePrompt, "Do you want to permanently delete all selected objects from the disk?");
-DEFINE_INTERFACE_STRING(FileManagerDeleteConfirm, "Delete");
-DEFINE_INTERFACE_STRING(FileManagerDeleteCancel, "Cancel");
-
 DEFINE_INTERFACE_STRING(CommonFormatPopup, "Format");
 DEFINE_INTERFACE_STRING(CommonFormatSize, "Text size:");
 DEFINE_INTERFACE_STRING(CommonFormatLanguage, "Language:");
@@ -119,7 +113,7 @@ DEFINE_INTERFACE_STRING(DesktopShutdownTitle, "Shut Down");
 DEFINE_INTERFACE_STRING(DesktopShutdownAction, "Shut down");
 DEFINE_INTERFACE_STRING(DesktopRestartAction, "Restart");
 DEFINE_INTERFACE_STRING(DesktopForceQuit, "Force quit");
-DEFINE_INTERFACE_STRING(DesktopCrashedApplication, "Warning! The application encountered a critical error in its code that was successfully stopped by the Light OS protection system. Check the application code to determine the cause of the problem. If this is a system application and not yours, please contact support.");
+DEFINE_INTERFACE_STRING(DesktopCrashedApplication, "The application has crashed. If you're a developer, more information is available in System Monitor.");
 DEFINE_INTERFACE_STRING(DesktopNoSuchApplication, "The requested application could not found. It may have been uninstalled.");
 DEFINE_INTERFACE_STRING(DesktopApplicationStartupError, "The requested application could not be started. Your system may be low on resources, or the application files may have been corrupted.");
 DEFINE_INTERFACE_STRING(DesktopNotResponding, "The application is not responding.\nIf you choose to force quit, any unsaved data may be lost.");

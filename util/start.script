@@ -30,7 +30,7 @@ void Setup(bool forAutomation) {
 
 	if !forAutomation && !acceptedLicense {
 		Log("=== Light License ===\n");
-		Log(FileReadAll("LICENSE.txt"):assert());
+		Log(FileReadAll("util/LICENSE.lightos"):assert());
 		Log("Type 'yes' to acknowledge you have read the license, or press Ctrl-C to exit.");
 		str input = ConsoleGetLine(); // TODO Use ConsoleGetYes.
 		if input != "yes" && input != "y" { return; }
