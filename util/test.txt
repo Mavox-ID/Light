@@ -1,3 +1,0 @@
-I am a text file,                       
-    with Unix line endings,
-        but no final newline.
