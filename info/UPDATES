@@ -1,0 +1,132 @@
+Version 1.0: (19.08.2021 | DD:MM:YYYY)
+Было сделана тестовая версия LevisOS имеющяя в себе:
+
+levis/
+├── b.s       -> Ассемблерный загрузчик (Multiboot)
+├── k.c       -> C-код ядра (VBE, Клавиатура, ACPI)
+├── font.h    -> Минимальный растровый шрифт (8x8)
+├── linker.ld -> Скрипт линковщика
+└── Makefile  -> Сборка и запуск
+
+Version 1.1: (30.08.2021 | DD:MM:YYYY)
+Проект с Levis OS был заброшен.
+
+Version 2.1: (10.09.2021 | DD:MM:YYYY)
+Было переименовано LevisOS на LightOS
+
+- Также было сделано минимальное -> загрузка ядра на основе Linux
+- Использование ядра Linux временное решение на основе Tiny Core Linux (Также Root Core | RC)
+- Был использован Linux мясо (Органы такие как H, и ноги)
+
+Version 3.1: (13.09.2021 | DD:MM:YYYY)
+Было сделан терминал используя RC с TCL
+
+- Добавлен VGA Text Mode (600x400)
+- Добавлен POSIX с поддержкой ввода с кастомный шрифтом
+
+Version 4.1: (15.09.2021 | DD:MM:YYYY)
+После правок над версией LightOS 3.1,
+Было сделано решение заменить ядро Linux на кастомное
+
+Version 4.2 (16.09.2021 | DD:MM:YYYY)
+Сначало замена не важных файлов до замены,
+И также компиляция и архивация перед заменой
+
+Version 5.2 (20.09.2021 | DD:MM:YYYY)
+Успешно заменен GRUB загрузчик на кастомный Bootloader:
+
+Структура загрузки:
+
+|    Загрузка железа ->                                 |
+|    Выбор размера екрана (3 выбора или кастомный) ->   |
+|    Загрузка системы с этой настройкой                 |
+
+Также удалены файлы для Linux (компилируемые)
+
+Version 6.2 (21.09.2021 | DD:MM:YYYY)
+Было сделано:
+
+1. Удаление важных файлов которые зависят от Linux ядра в LightOS
+3. Полное удаление GRUB
+2. Добавлена поддержка кастомного Bootloader-а уже в систему а не настройка его
+
+Version 7.2 (31.09.2021 | DD:MM:YYYY)
+Был полностью удален Linux ядро (TCL) с LightOS
+
+Остался только RCL (Root Core Linux) но это просто поддержка запуск бинарников ELF
+Возможно тоже будет удален
+
+Version 7.3 (04.10.2021 | DD:MM:YYYY)
+Пока до версии *.1000 Root Core Linux будет оставлен
+
+Также в LightOS было добавлена быстрая компиляция файлов, ОС весила 17 кб.
+
+Version 7.4 (10.10.2021 | DD:MM:YYYY)
+Было добавлена первая поддержка загрузки VBE для LightOS:
+
+// TODO -> DONT USE 16 BITS
+// TODO -> USE NORMAL BOOT VBE
+
+[BITS 16]
+[ORG 0x7C00]
+
+start:
+    cli
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov sp, 0x7C00
+
+    mov ax, 0x4F00
+    mov di, vbe_info
+    int 0x10
+
+    cmp ax, 0x004F
+    jne vbe_fail
+
+    mov ax, 0x4F01
+    mov cx, 0x118
+    mov di, vbe_mode
+    int 0x10
+
+    cmp ax, 0x004F
+    jne vbe_fail
+
+    mov ax, 0x4F02
+    mov bx, 0x4118     ; 0x4000 = LFB + 0x118 mode
+    int 0x10
+
+    cmp ax, 0x004F
+    jne vbe_fail
+
+    mov ax, [vbe_mode + 40]   ; PhysBasePtr (low)
+    mov dx, [vbe_mode + 42]   ; high
+
+hang:
+    hlt
+    jmp hang
+
+vbe_fail:
+    hlt
+    jmp vbe_fail
+
+vbe_info:
+    times 512 db 0
+
+vbe_mode:
+    times 256 db 0
+
+times 510-($-$$) db 0
+dw 0xAA55
+
+Version 8.4 (18.10.2021 | DD:MM:YYYY)
+Добавлено первый шрифт от 'Inter Light.otf'
+
+Также поддержка обновление екрана в C ядре
+
+Version 8.5 (20.10.2021 | DD:MM:YYYY)
+Скоро будет маштабное обновление связаное с отображение текста и комманд
+ОС была вперсые протестирована на реальном устройстве через большое количество правок
+
+Был стартап + Отображение 'Hello World!'
