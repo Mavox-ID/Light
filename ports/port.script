@@ -1,0 +1,734 @@
+// TODO Replace the remaining few calls to sed.
+//	e.g. FileReplaceLines, FileDeleteLine, FileInsertLine
+
+#import "util/get_source.script" get_source;
+
+str portName #option;
+str targetName #option;
+str toolchainPrefix #option;
+int processorCount #option;
+bool skipYesChecks #option;
+
+str sourceTree;
+str crossDirectory;
+str rootDirectory;
+str compilerPath;
+
+str posixDestDir;
+str posixPrefix;
+str posixRoot;
+
+// GCC port only:
+bool buildCross #option;
+
+// Musl port only:
+bool forceRebuild #option;
+
+functype void PortCallback();
+
+bool ConsoleGetYes() {
+	if skipYesChecks { return true; }
+	str input = ConsoleGetLine();
+	return input == "yes" || input == "y";
+}
+
+void PortFFmpeg() {
+	str version = "4.3.1";
+
+	get_source.Get("https://ffmpeg.org/releases/ffmpeg-%version%.tar.xz", "ffmpeg-%version%",
+			"ad009240d46e307b4e03a213a0f49c11b650e445b1f8be0dda2a9212b34d2ffb");
+
+	assert PathCreateDirectory("bin/build-ffmpeg");
+	assert PathCreateDirectory("bin/FFmpeg License");
+
+	assert SystemShellExecuteWithWorkingDirectory("bin/build-ffmpeg", 
+			"../source/configure --disable-all --enable-cross-compile --disable-pthreads "
+			+ "--cc=%toolchainPrefix%-gcc --cxx=%toolchainPrefix%-g++ --prefix=%posixPrefix% "
+			+ "--enable-avcodec --enable-avformat --enable-swscale --enable-decoder=h264 --enable-parser=h264 "
+			+ "--enable-decoder=aac --enable-parser=aac --enable-demuxer=mov --enable-protocol=file ");
+	// --disable-optimizations
+
+	assert SystemShellExecuteWithWorkingDirectory("bin/build-ffmpeg", "make -j %processorCount%");
+	assert SystemShellExecuteWithWorkingDirectory("bin/build-ffmpeg", "make DESTDIR=%posixDestDir% install");
+
+	assert FileCopy("LICENSE", "bin/source/LICENSE.txt");
+	assert FileCopy("bin/source/LICENSE.txt", "bin/FFmpeg License/LICENSE.txt");
+	assert FileCopy("bin/source/COPYING.GPLv2", "bin/FFmpeg License/COPYING.GPLv2");
+	assert FileCopy("bin/source/COPYING.GPLv3", "bin/FFmpeg License/COPYING.GPLv3");
+	assert FileCopy("bin/source/COPYING.LGPLv2.1", "bin/FFmpeg License/COPYING.LGPLv2.1");
+	assert FileCopy("bin/source/COPYING.LGPLv3", "bin/FFmpeg License/COPYING.LGPLv3");
+
+	PathDeleteRecursively("bin/source");
+	PathDeleteRecursively("bin/build-ffmpeg");
+}
+
+void PortUxn() {
+	PathDeleteRecursively("bin/uxn");
+	PathDeleteRecursively("bin/noodle");
+	get_source.Get("uxn-d2cf721.tar.xz", "uxn", "");
+	assert PathMove("bin/source", "bin/uxn");
+	get_source.Get("noodle-17b6b2d.tar.xz", "noodle", "");
+	assert PathMove("bin/source", "bin/noodle");
+	assert SystemShellExecute("cc -DNDEBUG -Os -g0 -s bin/uxn/src/uxnasm.c -o bin/uxnasm"); 
+	assert SystemShellExecuteWithWorkingDirectory("bin/noodle", "../uxnasm src/main.tal ../noodle.rom"); 
+	assert FileWriteAll("bin/uxn/src/devices/ppu.h", "/* removed */");
+	assert SystemShellExecute("%toolchainPrefix%-gcc -DNDEBUG -Os -g0 -s ports/uxn/emulator.c "
+			+ "-ffreestanding -nostdlib -lgcc -z max-page-size=0x1000 -o bin/uxnemu"); 
+}
+
+void PortNasm() {
+	str version = "2.15.05";
+	get_source.Get("https://www.nasm.us/pub/nasm/releasebuilds/%version%/nasm-%version%.tar.xz", "nasm-%version%",
+			"3caf6729c1073bf96629b57cee31eeb54f4f8129b01902c73428836550b30a3f");
+	assert SystemShellExecuteWithWorkingDirectory("bin/source", "./configure --host=%toolchainPrefix% CC=%toolchainPrefix%-gcc CXX=%toolchainPrefix%-g++ --prefix=%posixPrefix%");
+	assert SystemShellExecuteWithWorkingDirectory("bin/source", "make -j %processorCount%");
+	assert SystemShellExecuteWithWorkingDirectory("bin/source", "make install DESTDIR=%posixDestDir%");
+	assert FileCopy("bin/source/LICENSE", "bin/Nasm License.txt");
+	PathDeleteRecursively("bin/source");
+}
+
+void PortBochs() {
+    str version = "2.6.9";
+    get_source.Get("https://netix.dl.sourceforge.net/project/bochs/bochs/%version%/bochs-%version%.tar.gz", "bochs-%version%",
+            "ee5b677fd9b1b9f484b5aeb4614f43df21993088c0c0571187f93acb0866e98c");
+
+    assert FileCopy("ports/bochs/config.cc", "bin/source/config.cc");
+    assert FileCopy("ports/bochs/config.h.in", "bin/source/config.h.in");
+    assert FileCopy("ports/bochs/configure.in", "bin/source/configure.in");
+    assert FileCopy("ports/bochs/main.cc", "bin/source/main.cc");
+    assert FileCopy("ports/bochs/Makefile.in", "bin/source/Makefile.in");
+    assert FileCopy("ports/bochs/plugin.cc", "bin/source/plugin.cc");
+    assert FileCopy("ports/bochs/plugin.h", "bin/source/plugin.h");
+    assert FileCopy("ports/bochs/light.cc", "bin/source/gui/light.cc");
+    assert FileCopy("ports/bochs/gui_Makefile.in", "bin/source/gui/Makefile.in");
+    //system("mkdir -p root/Light/FOS");
+    //system("cp -r res/FOS/* root/Light/FOS/");
+
+    SystemShellExecuteWithWorkingDirectory("bin/source", "autoconf");
+    SystemShellExecuteWithWorkingDirectory("bin/source", "rm config.sub");
+    
+    assert FileCopy("ports/bochs/config.sub", "bin/source/config.sub");
+
+    assert SystemShellExecuteWithWorkingDirectory("bin/source", 
+            "./configure --with-light "
+            + "CC=%toolchainPrefix%-gcc CXX=%toolchainPrefix%-g++ "
+            + "LD=%toolchainPrefix%-ld "
+            + "--host=%toolchainPrefix% "
+            + "--build=x86_64-pc-linux-gnu "
+            + "--prefix=\"%posixPrefix%\" "
+            + "--enable-cpu-level=6 --enable-x86-64 --enable-all-optimizations "
+            + "--disable-instrumentation --disable-docbook");
+            
+    FileAppend("bin/source/config.h", 
+        "\n#define fseeko64 fseeko\n" +
+        "#define tmpfile64 tmpfile\n" +
+        "#define off64_t off_t\n");
+
+    assert SystemShellExecuteWithWorkingDirectory("bin/source", "make -j %processorCount%");
+    assert SystemShellExecuteWithWorkingDirectory("bin/source", "make DESTDIR=%posixDestDir% install");
+    PathDeleteRecursively("bin/source");
+}
+
+void PortBusybox() {
+	if PathExists("%posixRoot%/bin/busybox") {
+		return;
+	}
+	
+	str version = "1.33.1";
+
+	if SystemGetHostName() == "Darwin" {
+		assert SystemSetEnvironmentVariable("PATH", "/usr/local/opt/gnu-sed/libexec/gnubin:" + SystemGetEnvironmentVariable("PATH"):assert());
+	}
+
+	get_source.Get("https://www.busybox.net/downloads/busybox-%version%.tar.bz2", "busybox-%version%",
+			"12cec6bd2b16d8a9446dd16130f2b92982f1819f6e1c5f5887b6db03f5660d28");
+	str[] config = StringSplitByCharacter(FileReadAll("ports/busybox/config"):assert(), "\n", true);
+	config:insert("CONFIG_BUSYBOX_EXEC_PATH=\"%posixPrefix%/bin/busybox\"", 34);
+	config:insert("CONFIG_SYSROOT=\"%posixDestDir%\"", 51);
+	assert FileWriteAll("bin/source/.config", StringJoin(config, "\n", false));
+	assert SystemShellExecute("sed -i '1i #include <limits.h>\\n#ifndef NAME_MAX\\n#define NAME_MAX 255\\n#endif' bin/source/coreutils/split.c");
+        assert SystemShellExecuteWithWorkingDirectory("bin/source", 
+        "make ARCH=%targetName% CROSS_COMPILE=%toolchainPrefix%- " +
+        "AR=%toolchainPrefix%-ar AS=%toolchainPrefix%-as LD=%toolchainPrefix%-ld " +
+        "SKIP_STRIP=y -j%processorCount%");
+	assert FileCopy("bin/source/busybox", "%posixRoot%/bin/busybox");
+	assert FileCopy("bin/source/LICENSE", "bin/BusyBox License.txt");
+
+	PathDeleteRecursively("bin/source");
+}
+
+void PortMesa() {
+	get_source.Get("https://archive.mesa3d.org/mesa-20.1.8.tar.xz", "mesa-20.1.8",
+			"df21351494f7caaec5a3ccc16f14f15512e98d2ecde178bba1d134edc899b961");
+
+	assert FileWriteAll("bin/meson_cross.txt", 
+			"[binaries]\nc = '%toolchainPrefix%-gcc'\ncpp = '%toolchainPrefix%-g++'\nar = '%toolchainPrefix%-ar'\nstrip = '%toolchainPrefix%-strip'\n"
+			+ "[properties]\nsys_root = '%posixDestDir%'\n"
+			+ "c_args = ['-D_POSIX_SOURCE', '-D_GNU_SOURCE', '-DHAVE_MEMMOVE', '-DHAVE_TIMESPEC_GET']\n"
+			+ "cpp_args = ['-D_POSIX_SOURCE', '-D_GNU_SOURCE', '-DHAVE_MEMMOVE', '-DHAVE_TIMESPEC_GET']\n"
+			+ "[host_machine]\nsystem = 'light'\ncpu_family = '%targetName%'\ncpu = 'generic'\nendian = 'little'\n");
+
+	assert FileCopy("ports/mesa/changes/include_c11_threads_posix.h", "bin/source/include/c11/threads_posix.h");
+	assert FileCopy("ports/mesa/changes/src_util_detect_os.h", "bin/source/src/util/detect_os.h");
+	assert FileCopy("ports/mesa/changes/src_util_u_thread.h", "bin/source/src/util/u_thread.h");
+	assert FileCopy("ports/mesa/changes/src_util_anon_file.c", "bin/source/src/util/anon_file.c");
+	assert FileCopy("ports/mesa/changes/src_util_os_misc.c", "bin/source/src/util/os_misc.c");
+	assert FileCopy("ports/mesa/changes/meson.build", "bin/source/meson.build");
+	assert FileCopy("ports/mesa/changes/src_gallium_targets_osmesa_meson.build", "bin/source/src/gallium/targets/osmesa/meson.build");
+
+	assert SystemShellExecute("sed -i \"/cc = meson.get_compiler/i dep_clock = dependency('', required : false)\" bin/source/meson.build");
+	assert SystemShellExecute("sed -i \"s/dep_dl = .*/dep_dl = dependency('', required : false)/\" bin/source/meson.build");
+	assert SystemShellExecute("sed -i \"s/dep_rt = .*/dep_rt = dependency('', required : false)/\" bin/source/meson.build");
+	assert SystemShellExecute("sed -i \"s/dep_atomic = .*/dep_atomic = dependency('', required : false)/\" bin/source/meson.build");
+	assert SystemShellExecute("sed -i 's|http://zlib.net/fossils/zlib-1.2.11.tar.gz|https://sourceforge.net/projects/libpng/files/zlib/1.2.11/zlib-1.2.11.tar.gz|' bin/source/subprojects/zlib.wrap");
+	assert SystemShellExecute("sed -i '31i #include <climits>' bin/source/src/compiler/glsl/glsl_lexer.ll");
+	
+	assert SystemShellExecuteWithWorkingDirectory("bin/source", "meson ../build-mesa --cross-file ../meson_cross.txt "
+			+ "-Dosmesa=gallium -Ddefault_library=static -Dllvm=false");
+	assert SystemShellExecuteWithWorkingDirectory("bin/source", "ninja -C ../build-mesa -j %processorCount%");
+
+	assert FileCopy("bin/build-mesa/subprojects/expat-2.2.5/libexpat.a", "%posixRoot%/lib/libexpat.a");
+	assert FileCopy("bin/build-mesa/subprojects/zlib-1.2.11/libz.a", "%posixRoot%/lib/libz.a");
+	assert FileCopy("bin/build-mesa/src/gallium/targets/osmesa/libOSMesa.a", "%posixRoot%/lib/libOSMesa.a");
+	assert PathCopyRecursively("bin/source/include/GL", "%posixRoot%/include/GL");
+	assert PathCopyRecursively("bin/source/include/KHR", "%posixRoot%/include/KHR");
+	assert FileCopy("bin/source/docs/license.html", "bin/Mesa License.html");
+
+	PathDeleteRecursively("bin/source");
+	PathDeleteRecursively("bin/build-mesa");
+}
+
+void PortGCC() {
+	if buildCross {
+		// Print instructions.
+		Log("To build Light, you need a cross compiler. This will be built for you automatically.");
+		Log("- You do *not* need an internet connection. All archives are offline in res/barchive.");
+		Log("- You need ~3GB of drive space available.");
+		Log("- You need ~8GB of RAM available.");
+		Log("- This should take ~20 minutes on a modern computer.");
+		Log("- This does *not* require root permissions.");
+		Log("- You must fully update your system before building.");
+		Log("Enter 'yes' to continue.");
+		assert ConsoleGetYes();
+	}
+
+	// Make sure we're not running as root.
+	assert !SystemRunningAsAdministrator();
+
+	// Version strings:
+	str gccVersion      = "11.1.0";
+	str binutilsVersion = "2.36.1";
+	str gmpVersion      = "6.2.1";
+	str mpfrVersion     = "4.1.0";
+	str mpcVersion      = "1.2.1";
+
+	str destDir = "";
+
+	if buildCross {
+		// Modify the path.
+		str path = compilerPath + ":" + SystemGetEnvironmentVariable("PATH"):assert();
+		assert SystemSetEnvironmentVariable("PATH", path);
+		assert !StringContains(path, "::");
+		assert SystemGetEnvironmentVariable("PATH"):assert() == path;
+
+		// Get the brew library path if we're running on Darwin.
+		str libraryPath = "";
+		if SystemGetHostName() == "Darwin" libraryPath = "-L" + StringTrim(SystemShellEvaluate("brew --prefix")) + "/lib";
+
+		// Check all the needed tools are available.
+		assert SystemShellExecute("which awk");
+		assert SystemShellExecute("which bison");
+		assert SystemShellExecute("which ctags");
+		assert SystemShellExecute("which curl");
+		assert SystemShellExecute("which flex");
+		assert SystemShellExecute("which g++");
+		assert SystemShellExecute("which grep");
+		assert SystemShellExecute("which gzip");
+		assert SystemShellExecute("which make");
+		assert SystemShellExecute("which nasm");
+		assert SystemShellExecute("which sed");
+		assert SystemShellExecute("which tar");
+		assert SystemShellExecute("which xz");
+
+		// Check all the needed libraries are available.
+		assert FileWriteAll("bin/test.c", "int main() { return 0; }");
+		assert SystemShellExecute("gcc %libraryPath% -lmpc  bin/test.c -o bin/test"); // If this fails, install mpc/libmpc/libmpc-dev.
+		assert SystemShellExecute("gcc %libraryPath% -lmpfr bin/test.c -o bin/test"); // If this fails, install mpfr/libmpfr/libmpfr-dev.
+		assert SystemShellExecute("gcc %libraryPath% -lgmp  bin/test.c -o bin/test"); // If this fails, install gmp/libgmp/libgmp-dev.
+	} else {
+		destDir = "DESTDIR=%posixDestDir%";
+	}
+
+	// Ask the user if they want to resume an incomplete build.
+	bool resumeBuild = false;
+	if PathExists("bin/running_makefiles.txt") {
+		Log("The build system has detected a build was started, but was not completed.");
+		Log("Enter 'yes' to attempt to resume this build.");
+		resumeBuild = ConsoleGetYes();
+		PathDelete("bin/running_makefiles.txt");
+	}
+
+	if !resumeBuild {
+		if buildCross {
+			PathDeleteRecursively("cross");
+		}
+
+		// Cleanup.
+		PathDeleteRecursively("bin/build-binutils");
+		PathDeleteRecursively("bin/build-gcc");
+		PathDeleteRecursively("bin/build-mpfr");
+		PathDeleteRecursively("bin/build-mpc");
+		PathDeleteRecursively("bin/build-gmp");
+		PathDeleteRecursively("bin/binutils-src");
+		PathDeleteRecursively("bin/gcc-src");
+		PathDeleteRecursively("bin/mpfr-src");
+		PathDeleteRecursively("bin/mpc-src");
+		PathDeleteRecursively("bin/gmp-src");
+
+		// Create folders.
+		assert PathCreateDirectory("bin/build-binutils");
+		assert PathCreateDirectory("bin/build-gcc");
+		assert PathCreateDirectory("bin/build-mpc");
+		assert PathCreateDirectory("bin/build-mpfr");
+		assert PathCreateDirectory("bin/build-gmp");
+
+		// Download the sources.
+		get_source.Get("ftp://ftp.gnu.org/gnu/binutils/binutils-%binutilsVersion%.tar.xz", "binutils-%binutilsVersion%",
+				"e81d9edf373f193af428a0f256674aea62a9d74dfe93f65192d4eae030b0f3b0");
+		assert PathMove("bin/source", "bin/binutils-src");
+		
+		get_source.Get("ftp://ftp.gnu.org/gnu/gcc/gcc-%gccVersion%/gcc-%gccVersion%.tar.xz", "gcc-%gccVersion%",
+				"4c4a6fb8a8396059241c2e674b85b351c26a5d678274007f076957afa1cc9ddf");
+		assert PathMove("bin/source", "bin/gcc-src");
+		
+		get_source.Get("ftp://ftp.gnu.org/gnu/gmp/gmp-%gmpVersion%.tar.xz", "gmp-%gmpVersion%",
+				"fd4829912cddd12f84181c3451cc752be224643e87fac497b69edddadc49b4f2");
+		assert PathMove("bin/source", "bin/gcc-src/gmp");
+		
+		get_source.Get("ftp://ftp.gnu.org/gnu/mpfr/mpfr-%mpfrVersion%.tar.xz", "mpfr-%mpfrVersion%",
+				"0c98a3f1732ff6ca4ea690552079da9c597872d30e96ec28414ee23c95558a7f");
+		assert PathMove("bin/source", "bin/gcc-src/mpfr");
+		
+		get_source.Get("ftp://ftp.gnu.org/gnu/mpc/mpc-%mpcVersion%.tar.gz", "mpc-%mpcVersion%",
+				"17503d2c395dfcf106b622dc142683c1199431d095367c6aacba6eec30340459");
+		assert PathMove("bin/source", "bin/gcc-src/mpc");
+
+		// Patch the sources.
+
+		Log("Applying CPU defines for libstdc++-v3...");
+
+		str libstdPath = "bin/gcc-src/libstdc++-v3";
+		if PathExists("bin/gcc-src/gcc-%gccVersion%/libstdc++-v3") {
+			libstdPath = "bin/gcc-src/gcc-%gccVersion%/libstdc++-v3";
+		}
+
+		str cpuDefinesDir = libstdPath + "/@CPU_DEFINES_SRCDIR@";
+		
+		assert SystemShellExecute("mkdir -p \"%cpuDefinesDir%\""); 
+		
+		str sourceFile = libstdPath + "/config/cpu/generic/cpu_defines.h";
+		
+		if PathExists(sourceFile) {
+			assert FileCopy(sourceFile, cpuDefinesDir + "/cpu_defines.h");
+			Log("Fix applied: generic/cpu_defines.h -> %cpuDefinesDir%");
+		} else {
+			LogError("CRITICAL: Could not find %sourceFile%");
+			assert false;
+		}
+		// ------------------------------------
+		assert FileCopy("ports/gcc/changes/binutils_bfd_config.bfd", "bin/binutils-src/bfd/config.bfd");
+		assert FileCopy("ports/gcc/changes/binutils_config.sub", "bin/binutils-src/config.sub");
+		assert FileCopy("ports/gcc/changes/binutils_gas_configure.tgt", "bin/binutils-src/gas/configure.tgt");
+		assert FileCopy("ports/gcc/changes/binutils_ld_configure.tgt", "bin/binutils-src/ld/configure.tgt");
+		assert FileCopy("ports/gcc/changes/gcc_config.sub", "bin/gcc-src/config.sub");
+		assert FileCopy("ports/gcc/changes/gcc_fixincludes_mkfixinc.sh", "bin/gcc-src/fixincludes/mkfixinc.sh");
+		assert FileCopy("ports/gcc/changes/gcc_gcc_config_light.h", "bin/gcc-src/gcc/config/light.h");
+		assert FileCopy("ports/gcc/changes/gcc_gcc_config_i386_t-x86_64-light", "bin/gcc-src/gcc/config/i386/t-x86_64-light");
+		assert FileCopy("ports/gcc/changes/gcc_gcc_config.gcc", "bin/gcc-src/gcc/config.gcc");
+		assert FileCopy("ports/gcc/changes/gcc_gcc_config_host_darwin.c", "bin/gcc-src/gcc/config/host-darwin.c");
+		assert FileCopy("ports/gcc/changes/gcc_libgcc_config.host", "bin/gcc-src/libgcc/config.host");
+		assert FileCopy("ports/gcc/changes/gcc_libstdc++-v3_configure", "bin/gcc-src/libstdc++-v3/configure");
+
+		// Set environment variables to force configure scripts to assume the unrecognised cross-compile target is okay.
+		if !buildCross {
+			str[] variables = [
+				"ac_cv_func_calloc_0_nonnull", "ac_cv_func_chown_works", "ac_cv_func_getgroups_works", "ac_cv_func_malloc_0_nonnull",
+				"gl_cv_func_cbrtl_ieee", "gl_cv_func_ceil_ieee", "gl_cv_func_ceilf_ieee", "gl_cv_func_ceill_ieee",
+				"gl_cv_func_chown_ctime_works", "gl_cv_func_chown_slash_works", "gl_cv_func_exp2l_ieee", "gl_cv_func_expm1_ieee",
+				"gl_cv_func_fcntl_f_dupfd_works", "gl_cv_func_fdopendir_works", "gl_cv_func_floorf_ieee", "gl_cv_func_fma_works",
+				"gl_cv_func_fmaf_works", "gl_cv_func_fmal_works", "gl_cv_func_fmod_ieee", "gl_cv_func_fmodf_ieee",
+				"gl_cv_func_fmodl_ieee", "gl_cv_func_fpurge_works", "gl_cv_func_futimens_works", "gl_cv_func_futimesat_works",
+				"gl_cv_func_getgroups_works", "gl_cv_func_gettimeofday_clobber", "gl_cv_func_hypot_ieee", "gl_cv_func_hypotf_ieee",
+				"gl_cv_func_hypotl_ieee", "gl_cv_func_isfinitel_works", "gl_cv_func_isnanl_works", "gl_cv_func_link_works",
+				"gl_cv_func_linkat_slash", "gl_cv_func_log10_ieee", "gl_cv_func_log10f_ieee", "gl_cv_func_log1p_ieee",
+				"gl_cv_func_log1pf_ieee", "gl_cv_func_log1pl_ieee", "gl_cv_func_log2_ieee", "gl_cv_func_log2f_ieee",
+				"gl_cv_func_log_ieee", "gl_cv_func_logf_ieee", "gl_cv_func_lstat_dereferences_slashed_symlink", "gl_cv_func_mbrlen_empty_input",
+				"gl_cv_func_mbrtowc_empty_input", "gl_cv_func_memchr_works", "gl_cv_func_memmem_works_fast", "gl_cv_func_mkdir_trailing_dot_works",
+				"gl_cv_func_mkdir_trailing_slash_works", "gl_cv_func_mkfifo_works", "gl_cv_func_mknod_works", "gl_cv_func_modf_ieee",
+				"gl_cv_func_modff_ieee", "gl_cv_func_modfl_ieee", "gl_cv_func_nanosleep", "gl_cv_func_open_directory_works",
+				"gl_cv_func_perror_works", "gl_cv_func_printf_directive_a", "gl_cv_func_printf_directive_f", "gl_cv_func_printf_directive_n",
+				"gl_cv_func_printf_enomem", "gl_cv_func_printf_flag_zero", "gl_cv_func_printf_infinite", "gl_cv_func_printf_infinite_long_double",
+				"gl_cv_func_printf_sizes_c99", "gl_cv_func_pselect_detects_ebadf", "gl_cv_func_ptsname_sets_errno", "gl_cv_func_readlink_works",
+				"gl_cv_func_realpath_works", "gl_cv_func_remainder_ieee", "gl_cv_func_remainderf_ieee", "gl_cv_func_remainderl_iee",
+				"gl_cv_func_rename_dest_works", "gl_cv_func_rename_link_works", "gl_cv_func_rename_slash_dst_works", "gl_cv_func_rename_slash_src_works",
+				"gl_cv_func_rmdir_works", "gl_cv_func_round_ieee", "gl_cv_func_roundf_ieee", "gl_cv_func_select_detects_ebadf",
+				"gl_cv_func_setenv_works", "gl_cv_func_signbit", "gl_cv_func_signbit_gcc", "gl_cv_func_sleep_works",
+				"gl_cv_func_snprintf_directive_n", "gl_cv_func_snprintf_retval_c99", "gl_cv_func_snprintf_truncation_c99", "gl_cv_func_stat_dir_slash",
+				"gl_cv_func_stat_file_slash", "gl_cv_func_stpncpy", "gl_cv_func_strcasestr_linear", "gl_cv_func_strchrnul_works",
+				"gl_cv_func_strerror_0_works", "gl_cv_func_strstr_linear", "gl_cv_func_strtod_works", "gl_cv_func_svid_putenv",
+				"gl_cv_func_symlink_works", "gl_cv_func_tdelete_works", "gl_cv_func_trunc_ieee", "gl_cv_func_truncf_ieee",
+				"gl_cv_func_truncl_iee", "gl_cv_func_tzset_clobber", "gl_cv_func_ungetc_works", "gl_cv_func_unlink_honors_slashes",
+				"gl_cv_func_unsetenv_works", "gl_cv_func_usleep_works", "gl_cv_func_utimensat_works", "gl_cv_func_vsnprintf_posix",
+				"gl_cv_func_vsnprintf_zerosize_c99", "gl_cv_func_vsprintf_posix", "gl_cv_func_wcwidth_works", "gl_cv_func_working_getdelim",
+				"gl_cv_func_working_mkstemp", "gl_cv_func_working_mktime", "gl_cv_func_working_strerror"
+			];
+
+			for str variable in variables {
+				assert SystemSetEnvironmentVariable(variable, "yes");
+			}
+		}
+
+		// Build libraries.
+		if !buildCross {
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-gmp", 
+					"../gmp-src/configure --host=%toolchainPrefix% --prefix=\"%posixPrefix%\" "
+					+ "--without-readline CC=%toolchainPrefix%-gcc CXX=%toolchainPrefix%-g++");
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-gmp", "make -j %processorCount%");
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-gmp", "make %destDir% install");
+
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-mpfr", 
+					"../mpfr-src/configure --host=%toolchainPrefix% --prefix=\"%posixPrefix%\" "
+					+ "CC=%toolchainPrefix%-gcc CXX=%toolchainPrefix%-g++");
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-mpfr", "make -j %processorCount%");
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-mpfr", "make %destDir% install");
+
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-mpc", 
+					"../mpc-src/configure --host=%toolchainPrefix% --prefix=\"%posixPrefix%\" "
+					+ "CC=%toolchainPrefix%-gcc CXX=%toolchainPrefix%-g++");
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-mpc", "make -j %processorCount%");
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-mpc", "make %destDir% install");
+		}
+
+		// Run configure for Binutils and GCC.
+		if !buildCross {
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-binutils", 
+					"../binutils-src/configure --host=%toolchainPrefix% --prefix=\"%posixPrefix%\" "
+					+ "--with-local-prefix=\"%posixPrefix%/local\" --with-build-sysroot=%posixDestDir% "
+					+ "--without-isl --disable-nls --disable-werror --without-target-bdw-gc "
+					+ "CC=%toolchainPrefix%-gcc CXX=%toolchainPrefix%-g++");
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-gcc", 
+					"../gcc-src/configure --host=%toolchainPrefix% --target=%toolchainPrefix% --prefix=\"%posixPrefix%\" "
+					+ "--with-local-prefix=\"%posixPrefix%/local\" --with-build-sysroot=%posixDestDir% "
+					+ "--without-isl --disable-nls --disable-werror --without-target-bdw-gc "
+					+ "--enable-languages=c,c++ "
+					+ "CC=%toolchainPrefix%-gcc CXX=%toolchainPrefix%-g++ LD=%toolchainPrefix%-ld");
+		} else {
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-binutils", 
+					"../binutils-src/configure --target=%toolchainPrefix% --prefix=\"%crossDirectory%\" "
+					+ "--with-sysroot=\"%posixDestDir%\" --disable-nls --disable-werror");
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-gcc", 
+					"../gcc-src/configure --target=%toolchainPrefix% --prefix=\"%crossDirectory%\" "
+					+ "--enable-languages=c,c++ --with-sysroot=\"%posixDestDir%\" --disable-nls"); 
+			// Add --without-headers for a x86_64-elf build.
+		}
+	}
+
+	// Run makefiles.
+	assert FileWriteAll("bin/running_makefiles.txt", "");
+	assert SystemShellExecuteWithWorkingDirectory("bin/build-binutils", "make -j %processorCount%");
+	assert SystemShellExecuteWithWorkingDirectory("bin/build-binutils", "make %destDir% install");
+	assert SystemShellExecuteWithWorkingDirectory("bin/build-gcc", "make all-gcc -j %processorCount%");
+	assert SystemShellExecuteWithWorkingDirectory("bin/build-gcc", "make all-target-libgcc -j %processorCount%");
+	assert SystemShellExecuteWithWorkingDirectory("bin/build-gcc", "make %destDir% install-gcc"); // TODO
+	assert SystemShellExecuteWithWorkingDirectory("bin/build-gcc", "make %destDir% install-target-libgcc");
+
+	if buildCross {
+            PortMusl();
+        }
+	
+	if buildCross {
+		// Modify the mm_malloc.h header.
+		assert FileWriteAll("%crossDirectory%/lib/gcc/%toolchainPrefix%/%gccVersion%/include/mm_malloc.h", "/* removed */\n");
+
+		// Compile the system.
+		SystemShellExecute("bin/build c");
+
+		// Build libstdc++.
+		// TODO Work out why this sometimes hangs on Darwin.
+		if SystemGetHostName() != "Darwin" {
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-gcc", "make all-target-libstdc++-v3 -j %processorCount%");
+			assert SystemShellExecuteWithWorkingDirectory("bin/build-gcc", "make install-target-libstdc++-v3");
+		}
+	}
+	
+	// Copy license files.
+	assert FileCopy("bin/gcc-src/COPYING", "bin/GCC License.txt");
+	assert FileCopy("bin/binutils-src/COPYING", "bin/Binutils License.txt");
+	
+	assert FileCopy("bin/gcc-src/gmp/COPYING", "bin/GMP License.txt");
+	assert FileCopy("bin/gcc-src/mpc/COPYING.LESSER", "bin/MPC License.txt");
+	assert FileCopy("bin/gcc-src/mpfr/COPYING.LESSER", "bin/MPFR License.txt");
+
+	// Cleanup.
+	PathDelete("bin/running_makefiles.txt");
+	PathDeleteRecursively("bin/build-binutils");
+	PathDeleteRecursively("bin/build-gcc");
+	
+	PathDeleteRecursively("bin/binutils-src");
+	PathDeleteRecursively("bin/gcc-src");
+	
+	LogInfo("Build succeeded.");
+}
+
+void PortFreeType() {
+	if !PathExists("bin/freetype") {
+		get_source.Get("https://download.savannah.gnu.org/releases/freetype/freetype-2.9.tar.gz", "freetype-2.9", 
+				"bf380e4d7c4f3b5b1c1a7b2bf3abb967bda5e9ab480d0df656e0e08c5019c5e6");
+		assert PathMove("bin/source", "bin/freetype");
+		assert FileCopy("ports/freetype/patch-ftoption.h", "bin/freetype/include/freetype/config/ftoption.h");
+		assert FileCopy("ports/freetype/patch-ftstdlib.h", "bin/freetype/include/freetype/config/ftstdlib.h");
+		assert FileCopy("ports/freetype/patch-modules.cfg", "bin/freetype/modules.cfg");
+		// ================================
+	        Log("Updating config.sub and config.guess...");
+	        Log("Code: 115511");
+                assert SystemShellExecute("cp res/barchive/freetype/config.sub bin/freetype/builds/unix/config.sub");
+                assert SystemShellExecute("cp res/barchive/freetype/config.guess bin/freetype/builds/unix/config.guess");
+                assert SystemShellExecute("chmod +x bin/freetype/builds/unix/config.sub bin/freetype/builds/unix/config.guess");
+	        // ------------------------------------------------------ !CONFIG FILE! ------------------------------------------------------
+	        assert SystemShellExecuteWithWorkingDirectory("bin/freetype", "sed -i 's/| bsd\\*/| bsd* | light*/g' builds/unix/config.sub");
+	        // ------------------------------------------------------ !CONFIG FILE! ------------------------------------------------------
+	}
+
+	if !PathExists("%posixRoot%/include/ft2build.h") {
+		assert FileCopy("bin/freetype/include/ft2build.h", "%posixRoot%/include/ft2build.h");
+		assert PathCopyRecursively("bin/freetype/include/freetype", "%posixRoot%/include/freetype");
+	}
+
+	if !PathExists("bin/freetype/libfreetype_%targetName%.a") {
+		PathDelete("bin/freetype/objs/.libs/libfreetype.a");
+
+		if targetName == "x86_64" {
+			assert SystemShellExecuteWithWorkingDirectory("bin/freetype", 
+					"./configure --without-zlib --without-bzip2 --without-png --without-harfbuzz "
+					+ "CC=%toolchainPrefix%-gcc "
+					+ "CFLAGS=\"-g -ffreestanding -Wno-unused-function -O3 -I%posixRoot%/include\" "
+					+ "LDFLAGS=\"-L%posixRoot%/lib\" "
+					+ "--host=%toolchainPrefix%");
+		} else if targetName == "x86_32" {
+			assert SystemShellExecuteWithWorkingDirectory("bin/freetype", 
+					"./configure --without-zlib --without-bzip2 --without-png --without-harfbuzz "
+					+ "CFLAGS=\"-g -ffreestanding -Wno-unused-function -O3 -I%posixRoot%/include\" "
+					+ "LDFLAGS=\"-nostdlib -lgcc\" CC=%toolchainPrefix%-gcc --host=%toolchainPrefix%");
+			assert SystemShellExecuteWithWorkingDirectory("bin/freetype", 
+					"sed -i '/define FT_USE_AUTOCONF_SIZEOF_TYPES/d' builds/unix/ftconfig.h");
+		} else {
+			assert false;
+		}
+
+		assert SystemShellExecuteWithWorkingDirectory("bin/freetype", "make -j %processorCount%");
+		assert FileCopy("bin/freetype/objs/.libs/libfreetype.a", "bin/freetype/libfreetype_%targetName%.a");
+	}
+
+	assert FileCopy("bin/freetype/libfreetype_%targetName%.a", "%posixRoot%/lib/libfreetype.a");
+}
+
+void PortHarfBuzz() {
+	if !PathExists("bin/harfbuzz") {
+		get_source.Get("https://www.freedesktop.org/software/harfbuzz/release/harfbuzz-2.6.4.tar.xz", "harfbuzz-2.6.4", 
+				"9413b8d96132d699687ef914ebb8c50440efc87b3f775d25856d7ec347c03c12");
+		assert PathMove("bin/source", "bin/harfbuzz");
+		assert SystemShellExecute("sed -i '1i #include <limits.h>\\n#include <climits>' bin/harfbuzz/src/hb-meta.hh");
+		assert SystemShellExecuteWithWorkingDirectory("bin/harfbuzz", 
+				"./configure --with-glib=no --with-icu=no --with-freetype=no --with-cairo=no --with-fontconfig=no --enable-shared "
+				+ "CFLAGS=\"-g -O3 -DHB_TINY\" CXXFLAGS=\"-g -O3 -DHB_TINY\"");
+		assert FileCopy("ports/harfbuzz/light-config.h", "bin/harfbuzz/config.h");
+
+		str sed = "sed";
+		if SystemGetHostName() == "Darwin" sed = "gsed";
+		str[] headers = [ "assert", "atomic", "builtins", "float", "locale", "math", "stdio", "stdlib", "string", "unistd", "xlocale" ];
+
+		for str header in headers {
+			// TODO Replace this.
+			assert SystemShellExecuteWithWorkingDirectory("bin/harfbuzz/src", 
+					"find . -type f -exec %sed% -i 's/#include <%header%.h>/#include <light.h>/g' {} \\;");
+		}
+	}
+
+	if !PathExists("%posixRoot%/include/harfbuzz") {
+		assert PathCreateLeadingDirectories("%posixRoot%/include/harfbuzz");
+		assert PathCopyFilteredInto("bin/harfbuzz/src", ["*.h"], -1, "%posixRoot%/include/harfbuzz");
+	}
+
+	if !PathExists("bin/harfbuzz/libharfbuzz_%targetName%.a") {
+		str[] sources = [
+			"hb-aat-layout", "hb-aat-map", "hb-blob", "hb-buffer-serialize", 
+			"hb-buffer", "hb-common", "hb-face", "hb-fallback-shape", 
+			"hb-font", "hb-map", "hb-number", "hb-ot-cff1-table", 
+			"hb-ot-cff2-table", "hb-ot-color", "hb-ot-face", "hb-ot-font", 
+			"hb-ot-layout", "hb-ot-map", "hb-ot-math", "hb-ot-meta", 
+			"hb-ot-metrics", "hb-ot-name", "hb-ot-shape-complex-arabic", "hb-ot-shape-complex-default", 
+			"hb-ot-shape-complex-hangul", "hb-ot-shape-complex-hebrew", "hb-ot-shape-complex-indic-table", "hb-ot-shape-complex-indic", 
+			"hb-ot-shape-complex-khmer", "hb-ot-shape-complex-myanmar", "hb-ot-shape-complex-thai", "hb-ot-shape-complex-use-table", 
+			"hb-ot-shape-complex-use", "hb-ot-shape-complex-vowel-constraints", "hb-ot-shape-fallback", "hb-ot-shape-normalize", 
+			"hb-ot-shape", "hb-ot-tag", "hb-ot-var", "hb-set", 
+			"hb-shape-plan", "hb-shape", "hb-shaper", "hb-static", 
+			"hb-ucd", "hb-unicode", "hb-ft"
+		];
+
+		str link = "%toolchainPrefix%-ar cr libharfbuzz.a ";
+		int[] tasks = new int[];
+
+		for str source in sources {
+			if tasks:len() == processorCount { tasks:find_and_delete(await tasks); }
+			str command = "%toolchainPrefix%-gcc -c %source%.cc -o %source%.o "
+				+ "-DHAVE_CONFIG_H -I. -I.. -ffreestanding -fno-rtti -g -O3 -DHB_TINY -fno-exceptions -fno-threadsafe-statics "
+				+ "-fvisibility-inlines-hidden -DHB_NO_PRAGMA_GCC_DIAGNOSTIC_ERROR -I%posixRoot%/include";
+			tasks:add(SystemShellExecuteWithWorkingDirectory:curry("bin/harfbuzz/src"):curry(command):assert():async());
+			link += source + ".o ";
+		}
+
+		while tasks:len() != 0 { tasks:find_and_delete(await tasks); }
+		assert SystemShellExecuteWithWorkingDirectory("bin/harfbuzz/src", link);
+		assert SystemShellExecuteWithWorkingDirectory("bin/harfbuzz/src", "%toolchainPrefix%-ranlib libharfbuzz.a");
+		assert FileCopy("bin/harfbuzz/src/libharfbuzz.a", "bin/harfbuzz/libharfbuzz_%targetName%.a");
+	}
+
+	assert FileCopy("bin/harfbuzz/libharfbuzz_%targetName%.a", "%posixRoot%/lib/libharfbuzz.a");
+}
+
+void PortMusl() {
+	if processorCount == 0 processorCount = SystemGetProcessorCount();
+
+	bool install = false;
+
+	if !PathExists("bin/musl") {
+		get_source.Get("https://musl.libc.org/releases/musl-1.2.1.tar.gz", "musl-1.2.1", 
+				"68af6e18539f646f9c41a3a2bb25be4a5cfa5a8f65f0bb647fd2bbfdf877e84b");
+		assert PathMove("bin/source", "bin/musl");
+		assert FileCopy("ports/musl/changes/config.mak", "bin/musl/config.mak");
+		assert FileCopy("ports/musl/changes/dist_config.mak", "bin/musl/dist/config.mak");
+                assert FileCopy("ports/musl/changes/arch_x86_64_syscall_arch.h", "bin/musl/arch/x86_64/syscall_arch.h");
+                assert FileCopy("ports/musl/changes/src_env___init_tls.c", "bin/musl/src/env/__init_tls.c");
+                assert FileCopy("ports/musl/changes/src_process_x86_64_vfork.s", "bin/musl/src/process/x86_64/vfork.s");
+                assert FileCopy("ports/musl/changes/src_signal_x86_64_restore.s", "bin/musl/src/signal/x86_64/restore.s");
+                assert FileCopy("ports/musl/changes/src_thread_x86_64___unmapself.s", "bin/musl/src/thread/x86_64/__unmapself.s");
+                assert FileCopy("ports/musl/changes/src_thread_x86_64_clone.s", "bin/musl/src/thread/x86_64/clone.s");
+                assert FileCopy("ports/musl/changes/src_thread_x86_64_syscall_cp.s", "bin/musl/src/thread/x86_64/syscall_cp.s");
+                install = true;
+        }
+        
+	if forceRebuild || !PathExists("bin/musl/lib/libc.a") {
+		assert SystemShellExecuteWithWorkingDirectory("bin/musl", "make clean");
+		
+		assert SystemShellExecuteWithWorkingDirectory("bin/musl", 
+			"make -j %processorCount% " +
+			"CC=%compilerPath%/%toolchainPrefix%-gcc " +
+			"AR=%compilerPath%/%toolchainPrefix%-ar " +
+			"RANLIB=%compilerPath%/%toolchainPrefix%-ranlib " +
+			"lib/libc.a");
+		
+		assert FileCopy("bin/musl/lib/libc.a", "ports/musl/libc.a");
+		install = true;
+	}
+
+	if !PathExists("%posixRoot%/lib/libc.a") {
+		install = true;
+	}
+
+	if install {
+		LogInfo("Installing Musl libc to %posixRoot%...");
+		assert PathCreateLeadingDirectories("%posixRoot%/lib");
+		assert PathCreateLeadingDirectories("%posixRoot%/include");
+		assert FileCopy("ports/musl/libc.a", "%posixRoot%/lib/libc.a");
+		install = true;
+	}
+
+	if !PathExists("%posixRoot%/include/stdio.h") {
+		install = true;
+	}
+
+	if install {
+		assert PathCreateLeadingDirectories("%posixRoot%/lib");
+		assert PathCreateLeadingDirectories("%posixRoot%/include");
+
+		assert FileCopy("ports/musl/libc.a", "%posixRoot%/lib/libc.a");
+		assert FileCopy("ports/musl/empty.a", "%posixRoot%/lib/libm.a");
+		assert FileCopy("ports/musl/empty.a", "%posixRoot%/lib/libpthread.a");
+		assert FileCopy("ports/musl/empty.a", "%posixRoot%/lib/librt.a");
+
+		assert PathCopyRecursively("bin/musl/include", "%posixRoot%/include");
+		assert PathCopyRecursively("bin/musl/arch/generic", "%posixRoot%/include");
+		assert PathCopyRecursively("ports/musl/obj_bits_%targetName%", "%posixRoot%/include");
+
+		if targetName == "x86_64" {
+			assert PathCopyRecursively("bin/musl/arch/x86_64", "%posixRoot%/include");
+		} else if targetName == "x86_32" {
+			assert PathCopyRecursively("bin/musl/arch/i386", "%posixRoot%/include");
+		} else {
+			assert false;
+		}
+	}
+}
+
+void Start() {
+	// Get the number of processors to compile with.
+	if processorCount == 0 {
+		processorCount = SystemGetProcessorCount();
+		if processorCount < 1 processorCount = 1;
+		if processorCount > 16 processorCount = 16;
+	}
+
+	sourceTree = PathGetDefaultPrefix();
+	crossDirectory = sourceTree + "/cross";
+	rootDirectory = sourceTree + "/root";
+	compilerPath = crossDirectory + "/bin";
+
+	posixDestDir = rootDirectory;
+	posixPrefix = "/Applications/POSIX";
+	posixRoot = posixDestDir + posixPrefix;
+
+	// Create folders.
+	assert PathCreateLeadingDirectories("bin");
+	assert PathCreateLeadingDirectories("%rootDirectory%/Light");
+	assert PathCreateLeadingDirectories("%posixRoot%/bin");
+	assert PathCreateLeadingDirectories("%posixRoot%/include");
+	assert PathCreateLeadingDirectories("%posixRoot%/lib");
+
+	str[] portNames = [ "ffmpeg", "uxn", "nasm", "bochs", "busybox", "mesa", "gcc", "freetype", "harfbuzz", "musl" ];
+	PortCallback[] portCallbacks = [ PortFFmpeg, PortUxn, PortNasm, PortBochs, PortBusybox, PortMesa, PortGCC, PortFreeType, PortHarfBuzz, PortMusl ];
+
+	if portName == "" {
+		LogInfo("Available ports:");
+
+		for str port in portNames {
+			Log("\t%port%");
+		}
+	} else {
+		assert targetName      != "";
+		assert toolchainPrefix != "";
+
+		// LogInfo("Target name: '%targetName%'");
+		// LogInfo("Toolchain prefix: '%toolchainPrefix%'");
+		// LogInfo("Processors to use for compilation: '%processorCount%'");
+		// LogInfo("Skip yes checks: '%skipYesChecks%'");
+
+		for int i = 0; i < portNames:len(); i += 1 {
+			if portNames[i] == portName || portName == "all" {
+				if portName == "all" {
+					LogInfo("Building port: '%portNames[i]%'");
+				}
+
+				portCallbacks[i]();
+			}
+		}
+	}
+}
+
+void StartWithOptions(str _portName, bool _buildCross, bool _skipYesChecks, str _targetName, str _toolchainPrefix) {
+	portName = _portName;
+	buildCross = _buildCross;
+	skipYesChecks = _skipYesChecks;
+	targetName = _targetName;
+	toolchainPrefix = _toolchainPrefix;
+	Start();
+}
