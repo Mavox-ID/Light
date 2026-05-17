@@ -1,0 +1,696 @@
+EsError EsPathDelete(const char *path, ptrdiff_t pathBytes) {
+	_EsNodeInformation node;
+	if (pathBytes == -1) pathBytes = EsCStringLength(path);
+	EsError error = NodeOpen(path, pathBytes, LT_NODE_FAIL_IF_NOT_FOUND | LT_FILE_WRITE, &node);
+	if (LT_CHECK_ERROR(error)) return error;
+	error = EsSyscall(LT_SYSCALL_NODE_DELETE, node.handle, 0, 0, 0);
+	EsHandleClose(node.handle);
+	return error;
+}
+
+EsError EsFileDelete(EsHandle handle) {
+	return EsSyscall(LT_SYSCALL_NODE_DELETE, handle, 0, 0, 0);
+}
+
+void *EsFileMap(const char *path, ptrdiff_t pathBytes, size_t *fileSize, uint32_t flags) {
+	EsFileInformation information = EsFileOpen(path, pathBytes, 
+			LT_NODE_FAIL_IF_NOT_FOUND | ((flags & LT_MEMORY_MAP_OBJECT_READ_WRITE) ? LT_FILE_WRITE : LT_FILE_READ));
+
+	if (LT_CHECK_ERROR(information.error)) {
+		return nullptr;
+	}
+
+	void *base = EsMemoryMapObject(information.handle, 0, information.size, flags); 
+	EsHandleClose(information.handle);
+	if (fileSize) *fileSize = information.size;
+	return base;
+}
+
+EsError EsPathMove(const char *oldPath, ptrdiff_t oldPathBytes, const char *newPath, ptrdiff_t newPathBytes, uint32_t flags) {
+	if (oldPathBytes == -1) oldPathBytes = EsCStringLength(oldPath);
+	if (newPathBytes == -1) newPathBytes = EsCStringLength(newPath);
+
+	if (newPathBytes && newPath[newPathBytes - 1] == '/') {
+		newPathBytes--;
+	}
+
+	_EsNodeInformation node = {};
+	_EsNodeInformation directory = {};
+	EsError error;
+
+	error = NodeOpen(oldPath, oldPathBytes, LT_NODE_FAIL_IF_NOT_FOUND, &node);
+	if (error != LT_SUCCESS) return error;
+
+	uintptr_t s = 0;
+	for (intptr_t i = 0; i < newPathBytes; i++) if (newPath[i] == '/') s = i + 1;
+	error = NodeOpen(newPath, s, LT_NODE_DIRECTORY | LT_NODE_FAIL_IF_NOT_FOUND, &directory);
+	if (error != LT_SUCCESS) { EsHandleClose(node.handle); return error; }
+
+	error = EsSyscall(LT_SYSCALL_NODE_MOVE, node.handle, directory.handle, (uintptr_t) newPath + s, newPathBytes - s);
+
+	if (error == LT_ERROR_VOLUME_MISMATCH && (flags & LT_PATH_MOVE_ALLOW_COPY_AND_DELETE) && (node.type == LT_NODE_FILE)) {
+		// The paths are on different file systems, so we cannot directly move the file.
+		// Instead we need to copy the file to the new path, and then delete the old file.
+		// TODO Does it matter that this isn't atomic?
+		error = EsFileCopy(oldPath, oldPathBytes, newPath, newPathBytes);
+		if (error == LT_SUCCESS) error = EsPathDelete(oldPath, oldPathBytes);
+	}
+
+	EsHandleClose(node.handle);
+	EsHandleClose(directory.handle);
+	return error;
+}
+
+bool EsPathExists(const char *path, ptrdiff_t pathBytes, EsNodeType *type) {
+	if (pathBytes == -1) pathBytes = EsCStringLength(path);
+	_EsNodeInformation node = {};
+	EsError error = NodeOpen(path, pathBytes, LT_NODE_FAIL_IF_NOT_FOUND, &node);
+	if (error != LT_SUCCESS) return false;
+	EsHandleClose(node.handle);
+	if (type) *type = node.type;
+	return true;
+}
+
+EsError EsPathQueryInformation(const char *path, ptrdiff_t pathBytes, EsDirectoryChild *information) {
+	if (pathBytes == -1) pathBytes = EsCStringLength(path);
+	_EsNodeInformation node = {};
+	EsError error = NodeOpen(path, pathBytes, LT_NODE_FAIL_IF_NOT_FOUND, &node);
+	if (error != LT_SUCCESS) return error;
+	EsHandleClose(node.handle);
+	information->type = node.type;
+	information->fileSize = node.fileSize;
+	information->directoryChildren = node.directoryChildren;
+	information->contentType = node.contentType;
+	return LT_SUCCESS;
+}
+
+EsError EsPathCreate(const char *path, ptrdiff_t pathBytes, EsNodeType type, bool createLeadingDirectories) {
+	if (pathBytes == -1) pathBytes = EsCStringLength(path);
+	_EsNodeInformation node = {};
+	EsError error = NodeOpen(path, pathBytes, 
+			LT_NODE_FAIL_IF_FOUND | type | (createLeadingDirectories ? LT_NODE_CREATE_DIRECTORIES : 0), 
+			&node);
+	if (error != LT_SUCCESS) return error;
+	EsHandleClose(node.handle);
+	return LT_SUCCESS;
+}
+
+EsError EsFileControl(EsHandle file, EsFileControlOperation operation, void *data, size_t dataBytes) {
+	return EsSyscall(LT_SYSCALL_FILE_CONTROL, file, operation, (uintptr_t) data, dataBytes);
+}
+
+ptrdiff_t DirectoryEnumerateFromHandle(EsHandle directory, EsDirectoryChild *buffer, size_t size) {
+	if (!size) return 0;
+	return EsSyscall(LT_SYSCALL_DIRECTORY_ENUMERATE, directory, (uintptr_t) buffer, size, 0);
+}
+
+EsDirectoryChild *EsDirectoryEnumerate(const char *path, ptrdiff_t pathBytes, size_t *countOut, EsError *errorOut) {
+	*countOut = 0;
+	*errorOut = LT_ERROR_UNKNOWN;
+
+	if (pathBytes == -1) pathBytes = EsCStringLength(path);
+
+	_EsNodeInformation node;
+	EsError error = NodeOpen(path, pathBytes, LT_NODE_FAIL_IF_NOT_FOUND | LT_NODE_DIRECTORY, &node);
+
+	if (error != LT_SUCCESS) {
+		*errorOut = error;
+		return nullptr;
+	}
+
+	if (node.directoryChildren == LT_DIRECTORY_CHILDREN_UNKNOWN) {
+		// TODO Grow the buffer until all entries fit.
+		node.directoryChildren = 4194304 / sizeof(EsDirectoryChild);
+	}
+
+	if (node.directoryChildren == 0) {
+		// Empty directory.
+		*errorOut = LT_SUCCESS;
+		return nullptr;
+	}
+
+	EsDirectoryChild *buffer = (EsDirectoryChild *) EsHeapAllocate(sizeof(EsDirectoryChild) * node.directoryChildren, true);
+
+	if (buffer) {
+		ptrdiff_t result = DirectoryEnumerateFromHandle(node.handle, buffer, node.directoryChildren);
+
+		if (LT_CHECK_ERROR(result)) { 
+			EsHeapFree(buffer); 
+			buffer = nullptr; 
+			*errorOut = result;
+		} else {
+			*errorOut = LT_SUCCESS;
+			*countOut = result;
+		}
+	} else {
+		*errorOut = LT_ERROR_INSUFFICIENT_RESOURCES;
+	}
+
+	EsHandleClose(node.handle);
+	return buffer;
+}
+
+EsFileInformation EsFileOpen(const char *path, ptrdiff_t pathLength, uint32_t flags) {
+	if (pathLength == -1) {
+		pathLength = EsCStringLength(path);
+	}
+
+	_EsNodeInformation node;
+	EsError result = NodeOpen(path, pathLength, flags, &node);
+
+	if (result == LT_SUCCESS && node.type == LT_NODE_DIRECTORY && (~flags & LT_NODE_DIRECTORY /* for internal use only */)) {
+		result = LT_ERROR_INCORRECT_NODE_TYPE;
+		EsHandleClose(node.handle);
+	}
+
+	EsFileInformation information = {};
+
+	if (result == LT_SUCCESS) {
+		information.handle = node.handle;
+		information.size = node.fileSize;
+		information.contentType = node.contentType;
+	}
+
+	information.error = result;
+	return information;
+}
+
+size_t EsFileReadSync(EsHandle handle, EsFileOffset offset, size_t size, void *buffer) {
+	intptr_t result = EsSyscall(LT_SYSCALL_FILE_READ_SYNC, handle, offset, size, (uintptr_t) buffer);
+	return result;
+}
+
+size_t EsFileWriteSync(EsHandle handle, EsFileOffset offset, size_t size, const void *buffer) {
+	intptr_t result = EsSyscall(LT_SYSCALL_FILE_WRITE_SYNC, handle, offset, size, (uintptr_t) buffer);
+	return result;
+}
+
+EsFileOffset EsFileGetSize(EsHandle handle) {
+	return EsSyscall(LT_SYSCALL_FILE_GET_SIZE, handle, 0, 0, 0);
+}
+
+EsError EsFileResize(EsHandle handle, EsFileOffset newSize) {
+	return EsSyscall(LT_SYSCALL_FILE_RESIZE, handle, newSize, 0, 0);
+}
+
+void *EsFileStoreReadAll(EsFileStore *file, size_t *fileSize) {
+	if (file->error != LT_SUCCESS) return nullptr;
+
+	if (file->type == FILE_STORE_HANDLE) {
+		return EsFileReadAllFromHandle(file->handle, fileSize, &file->error);
+	} else if (file->type == FILE_STORE_PATH) {
+		return EsFileReadAll(file->path, file->pathBytes, fileSize, &file->error);
+	} else if (file->type == FILE_STORE_EMBEDDED_FILE) {
+		size_t _fileSize;
+		const void *data = EsBundleFind(file->bundle, file->path, file->pathBytes, &_fileSize);
+		void *copy = EsHeapAllocate(_fileSize, false);
+		if (!copy) return nullptr;
+		if (fileSize) *fileSize = _fileSize;
+		EsMemoryCopy(copy, data, _fileSize);
+		return copy;
+	} else {
+		EsAssert(false);
+		return nullptr;
+	}
+}
+
+bool EsFileStoreWriteAll(EsFileStore *file, const void *data, size_t dataBytes) {
+	if (file->error == LT_SUCCESS) {
+		if (file->type == FILE_STORE_HANDLE) {
+			file->error = EsFileWriteAllFromHandle(file->handle, data, dataBytes);
+		} else if (file->type == FILE_STORE_PATH) {
+			file->error = EsFileWriteAll(file->path, file->pathBytes, data, dataBytes);
+		} else {
+			EsAssert(false);
+		}
+	}
+
+	return file->error == LT_SUCCESS;
+}
+
+bool EsFileStoreAppend(EsFileStore *file, const void *data, size_t dataBytes) {
+	if (file->error == LT_SUCCESS) {
+		if (file->type == FILE_STORE_HANDLE) {
+			EsError error = EsFileWriteSync(file->handle, EsFileGetSize(file->handle), dataBytes, data);
+			if (LT_CHECK_ERROR(error)) file->error = error;
+		} else {
+			EsAssert(false);
+		}
+	}
+
+	return file->error == LT_SUCCESS;
+}
+
+EsFileOffsetDifference EsFileStoreGetSize(EsFileStore *file) {
+	if (file->type == FILE_STORE_HANDLE) {
+		return EsFileGetSize(file->handle);
+	} else if (file->type == FILE_STORE_PATH) {
+		EsDirectoryChild information;
+
+		if (LT_SUCCESS == EsPathQueryInformation(file->path, file->pathBytes, &information)) {
+			return file->pathBytes;
+		} else {
+			return -1;
+		}
+	} else if (file->type == FILE_STORE_EMBEDDED_FILE) {
+		size_t size;
+		EsBundleFind(file->bundle, file->path, file->pathBytes, &size);
+		return size;
+	} else {
+		EsAssert(false);
+		return 0;
+	}
+}
+
+void *EsFileStoreMap(EsFileStore *file, size_t *fileSize, uint32_t flags) {
+	if (file->type == FILE_STORE_HANDLE) {
+		EsFileOffsetDifference size = EsFileStoreGetSize(file);
+		if (size == -1) return nullptr;
+		*fileSize = size;
+		return EsMemoryMapObject(file->handle, 0, size, flags); 
+	} else if (file->type == FILE_STORE_PATH) {
+		return EsFileMap(file->path, file->pathBytes, fileSize, flags);
+	} else if (file->type == FILE_STORE_EMBEDDED_FILE) {
+		return (void *) EsBundleFind(file->bundle, file->path, file->pathBytes, fileSize);
+	} else {
+		EsAssert(false);
+		return nullptr;
+	}
+}
+
+void EsFileStoreSetContentType(EsFileStore *file, EsUniqueIdentifier identifier) {
+	if (file->type == FILE_STORE_HANDLE) {
+		EsFileControl(file->handle, LT_FILE_CONTROL_SET_CONTENT_TYPE, &identifier, sizeof(identifier));
+	} else if (file->type == FILE_STORE_PATH) {
+		EsFileInformation information = EsFileOpen(file->path, file->pathBytes, LT_FILE_WRITE | LT_NODE_CREATE_DIRECTORIES);
+
+		if (information.error == LT_SUCCESS) {
+			EsFileControl(file->handle, LT_FILE_CONTROL_SET_CONTENT_TYPE, &identifier, sizeof(identifier));
+			EsHandleClose(information.handle);
+		}
+	} else {
+		// The file store backend doesn't support this operation.
+	}
+}
+
+EsError MountPointAdd(const char *prefix, size_t prefixBytes, EsHandle base, bool addedByApplication) {
+	EsMutexAcquire(&api.mountPointsMutex);
+	bool duplicate = NodeFindMountPoint(prefix, prefixBytes, nullptr, true);
+	EsError error = LT_SUCCESS;
+
+	if (duplicate) {
+		error = LT_ERROR_ALREADY_EXISTS;
+	} else {
+		EsMountPoint mountPoint = {};
+		EsAssert(prefixBytes < sizeof(mountPoint.prefix));
+		EsMemoryCopy(mountPoint.prefix, prefix, prefixBytes);
+		mountPoint.base = EsSyscall(LT_SYSCALL_HANDLE_SHARE, base, LT_CURRENT_PROCESS, 0, 0);
+		mountPoint.prefixBytes = prefixBytes;
+		mountPoint.addedByApplication = addedByApplication;
+
+		if (LT_CHECK_ERROR(mountPoint.base)) {
+			error = LT_ERROR_INSUFFICIENT_RESOURCES;
+		} else {
+			if (!api.mountPoints.Add(mountPoint)) {
+				EsHandleClose(mountPoint.base);
+				error = LT_ERROR_INSUFFICIENT_RESOURCES;
+			}
+		}
+	}
+
+	EsMutexRelease(&api.mountPointsMutex);
+	return error;
+}
+
+EsError EsMountPointAdd(const char *prefix, ptrdiff_t prefixBytes, EsHandle base) {
+	return MountPointAdd(prefix, prefixBytes == -1 ? EsCStringLength(prefix) : prefixBytes, base, true);
+}
+
+bool NodeFindMountPoint(const char *prefix, size_t prefixBytes, EsMountPoint *result, bool mutexTaken) {
+	if (!mutexTaken) EsMutexAcquire(&api.mountPointsMutex);
+	bool found = false;
+
+	for (uintptr_t i = 0; i < api.mountPoints.Length(); i++) {
+		EsMountPoint *mountPoint = &api.mountPoints[i];
+
+		if (prefixBytes >= mountPoint->prefixBytes && 0 == EsMemoryCompare(prefix, mountPoint->prefix, mountPoint->prefixBytes)) {
+			// Only permanent mount points can be used retrieved with NodeFindMountPoint when mutexTaken = false,
+			// because mount points added by the application can be removed as soon as we release the mutex,
+			// and the base handle would be closed.
+			EsAssert(mutexTaken || !mountPoint->addedByApplication);
+			if (result) EsMemoryCopy(result, mountPoint, sizeof(EsMountPoint));
+			found = true;
+			break;
+		}
+	}
+
+	if (!mutexTaken) EsMutexRelease(&api.mountPointsMutex);
+	return found;
+}
+
+bool EsMountPointRemove(const char *prefix, ptrdiff_t prefixBytes) {
+	if (prefixBytes == -1) {
+		prefixBytes = EsCStringLength(prefix);
+	}
+
+	EsMutexAcquire(&api.mountPointsMutex);
+	bool found = false;
+
+	for (uintptr_t i = 0; i < api.mountPoints.Length(); i++) {
+		EsMountPoint *mountPoint = &api.mountPoints[i];
+
+		if ((uintptr_t) prefixBytes >= mountPoint->prefixBytes 
+				&& 0 == EsMemoryCompare(prefix, mountPoint->prefix, mountPoint->prefixBytes)) {
+			EsAssert(mountPoint->addedByApplication);
+			EsHandleClose(mountPoint->base);
+			api.mountPoints.Delete(i);
+			found = true;
+			break;
+		}
+	}
+
+	EsMutexRelease(&api.mountPointsMutex);
+	return found;
+}
+
+bool EsMountPointGetVolumeInformation(const char *prefix, ptrdiff_t prefixBytes, EsVolumeInformation *information) {
+	if (prefixBytes == -1) {
+		prefixBytes = EsCStringLength(prefix);
+	}
+
+	EsMutexAcquire(&api.mountPointsMutex);
+	EsMountPoint mountPoint;
+	bool found = NodeFindMountPoint(prefix, prefixBytes, &mountPoint, true);
+
+	if (found) {
+		_EsNodeInformation node;
+		node.handle = mountPoint.base;
+		EsError error = EsSyscall(LT_SYSCALL_NODE_OPEN, (uintptr_t) "/", 1, LT_NODE_DIRECTORY, (uintptr_t) &node);
+
+		if (error == LT_SUCCESS) {
+			EsSyscall(LT_SYSCALL_VOLUME_GET_INFORMATION, node.handle, (uintptr_t) information, 0, 0);
+			EsHandleClose(node.handle);
+		} else {
+			EsMemoryZero(information, sizeof(EsVolumeInformation));
+		}
+	}
+
+	EsMutexRelease(&api.mountPointsMutex);
+	return found;
+}
+
+EsError NodeOpen(const char *path, size_t pathBytes, uint32_t flags, _EsNodeInformation *node) {
+	// TODO I really don't like having to acquire a mutex to open a node.
+	// 	This could be replaced with a writer lock!
+	// 	(...but we don't have writer locks in userland yet.)
+	EsMutexAcquire(&api.mountPointsMutex);
+
+	EsMountPoint mountPoint;
+	bool found = NodeFindMountPoint(path, pathBytes, &mountPoint, true);
+	EsError error = LT_ERROR_PATH_NOT_WITHIN_MOUNTED_VOLUME;
+
+	if (found) {
+		node->handle = mountPoint.base;
+		path += mountPoint.prefixBytes;
+		pathBytes -= mountPoint.prefixBytes;
+		error = EsSyscall(LT_SYSCALL_NODE_OPEN, (uintptr_t) path, pathBytes, flags, (uintptr_t) node);
+	}
+
+	EsMutexRelease(&api.mountPointsMutex);
+	return error;
+}
+
+void _EsPathAnnouncePathMoved(const char *oldPath, ptrdiff_t oldPathBytes, const char *newPath, ptrdiff_t newPathBytes) {
+	if (oldPathBytes == -1) oldPathBytes = EsCStringLength(oldPath);
+	if (newPathBytes == -1) newPathBytes = EsCStringLength(newPath);
+	size_t bufferBytes = 1 + sizeof(uintptr_t) * 2 + oldPathBytes + newPathBytes;
+	char *buffer = (char *) EsHeapAllocate(bufferBytes, false);
+
+	if (buffer) {
+		buffer[0] = DESKTOP_MSG_ANNOUNCE_PATH_MOVED;
+		EsMemoryCopy(buffer + 1, &oldPathBytes, sizeof(uintptr_t));
+		EsMemoryCopy(buffer + 1 + sizeof(uintptr_t), &newPathBytes, sizeof(uintptr_t));
+		EsMemoryCopy(buffer + 1 + sizeof(uintptr_t) * 2, oldPath, oldPathBytes);
+		EsMemoryCopy(buffer + 1 + sizeof(uintptr_t) * 2 + oldPathBytes, newPath, newPathBytes);
+		MessageDesktop(buffer, bufferBytes);
+		EsHeapFree(buffer);
+	}
+}
+
+void EsOpenDocumentQueryInformation(const char *path, ptrdiff_t pathBytes, EsOpenDocumentInformation *information) {
+	if (pathBytes == -1) pathBytes = EsCStringLength(path);
+	char *buffer = (char *) EsHeapAllocate(pathBytes + 1, false);
+
+	if (buffer) {
+		buffer[0] = DESKTOP_MSG_QUERY_OPEN_DOCUMENT;
+		EsMemoryCopy(buffer + 1, path, pathBytes);
+		EsBuffer response = { .out = (uint8_t *) information, .bytes = sizeof(EsOpenDocumentInformation) };
+		MessageDesktop(buffer, pathBytes + 1, LT_INVALID_HANDLE, &response);
+		EsHeapFree(buffer);
+	}
+}
+
+void _EsOpenDocumentEnumerate(EsBuffer *outputBuffer) {
+	uint8_t m = DESKTOP_MSG_LIST_OPEN_DOCUMENTS;
+	MessageDesktop(&m, 1, LT_INVALID_HANDLE, outputBuffer);
+}
+
+void FileStoreCloseHandle(EsFileStore *fileStore) {
+	EsMessageMutexCheck(); // TODO Remove this limitation?
+	EsAssert(fileStore->handles < 0x80000000);
+
+	if (--fileStore->handles) {
+		return;
+	}
+
+	if (fileStore->type == FILE_STORE_HANDLE) {
+		if (fileStore->handle) {
+			EsHandleClose(fileStore->handle);
+		}
+	} else if (fileStore->type == FILE_STORE_PATH || fileStore->type == FILE_STORE_EMBEDDED_FILE) {
+		// The path is stored after the file store allocation.
+	}
+
+	EsHeapFree(fileStore);
+}
+
+EsFileStore *FileStoreCreateFromPath(const char *path, size_t pathBytes) {
+	EsFileStore *fileStore = (EsFileStore *) EsHeapAllocate(sizeof(EsFileStore) + pathBytes, false);
+	if (!fileStore) return nullptr;
+	EsMemoryZero(fileStore, sizeof(EsFileStore));
+	fileStore->type = FILE_STORE_PATH;
+	fileStore->handles = 1;
+	fileStore->error = LT_SUCCESS;
+	fileStore->path = (char *) (fileStore + 1);
+	fileStore->pathBytes = pathBytes;
+	EsMemoryCopy(fileStore->path, path, pathBytes);
+	return fileStore;
+}
+
+EsFileStore *FileStoreCreateFromHandle(EsHandle handle) {
+	EsFileStore *fileStore = (EsFileStore *) EsHeapAllocate(sizeof(EsFileStore), true);
+	if (!fileStore) return nullptr;
+	fileStore->type = FILE_STORE_HANDLE;
+	fileStore->handles = 1;
+	fileStore->error = LT_SUCCESS;
+	fileStore->handle = handle;
+	return fileStore;
+}
+
+EsFileStore *FileStoreCreateFromEmbeddedFile(const EsBundle *bundle, const char *name, size_t nameBytes) {
+	EsFileStore *fileStore = (EsFileStore *) EsHeapAllocate(sizeof(EsFileStore) + nameBytes, false);
+	if (!fileStore) return nullptr;
+	EsMemoryZero(fileStore, sizeof(EsFileStore));
+	fileStore->type = FILE_STORE_EMBEDDED_FILE;
+	fileStore->handles = 1;
+	fileStore->error = LT_SUCCESS;
+	fileStore->path = (char *) (fileStore + 1);
+	fileStore->pathBytes = nameBytes;
+	fileStore->bundle = bundle;
+	EsMemoryCopy(fileStore->path, name, nameBytes);
+	return fileStore;
+}
+
+const void *EsBundleFind(const EsBundle *bundle, const char *_name, ptrdiff_t nameBytes, size_t *byteCount) {
+	if (!bundle) {
+		bundle = &bundleDefault;
+	}
+
+	if (nameBytes == -1) {
+		nameBytes = EsCStringLength(_name);
+	}
+
+	if (bundle->bytes != -1) {
+		if ((size_t) bundle->bytes < sizeof(BundleHeader) 
+				|| (size_t) (bundle->bytes - sizeof(BundleHeader)) / sizeof(BundleFile) < bundle->base->fileCount
+				|| bundle->base->signature != BUNDLE_SIGNATURE || bundle->base->version != 1) {
+			return nullptr;
+		}
+	}
+
+	const BundleHeader *header = bundle->base;
+	const BundleFile *files = (const BundleFile *) (header + 1);
+	uint64_t name = CalculateCRC64(_name, nameBytes, 0);
+
+	for (uintptr_t i = 0; i < header->fileCount; i++) {
+		if (files[i].nameCRC64 == name) {
+			if (byteCount) {
+				*byteCount = files[i].bytes;
+			}
+
+			if (bundle->bytes != -1) {
+				if (files[i].offset >= (size_t) bundle->bytes || files[i].bytes > (size_t) (bundle->bytes - files[i].offset)) {
+					return nullptr;
+				}
+			}
+
+			return (const uint8_t *) header + files[i].offset;
+		}
+	}
+
+	return nullptr;
+}
+
+EsError EsFileWriteAll(const char *filePath, ptrdiff_t filePathLength, const void *data, size_t sizes) {
+	return EsFileWriteAllGather(filePath, filePathLength, &data, &sizes, 1);
+}
+
+EsError EsFileWriteAllGather(const char *filePath, ptrdiff_t filePathLength, const void **data, const size_t *sizes, size_t gatherCount) {
+	if (filePathLength == -1) {
+		filePathLength = EsCStringLength(filePath);
+	}
+
+	EsFileInformation information = EsFileOpen(filePath, filePathLength, LT_FILE_WRITE | LT_NODE_CREATE_DIRECTORIES);
+
+	if (LT_SUCCESS != information.error) {
+		return information.error;
+	}
+
+	EsError error = EsFileWriteAllGatherFromHandle(information.handle, data, sizes, gatherCount);
+	EsHandleClose(information.handle);
+	return error;
+}
+
+EsError EsFileWriteAllFromHandle(EsHandle handle, const void *data, size_t sizes) {
+	return EsFileWriteAllGatherFromHandle(handle, &data, &sizes, 1);
+}
+
+EsError EsFileWriteAllGatherFromHandle(EsHandle handle, const void **data, const size_t *sizes, size_t gatherCount) {
+	size_t fileSize = 0;
+
+	for (uintptr_t i = 0; i < gatherCount; i++) {
+		fileSize += sizes[i];
+	}
+
+	EsError error = EsFileResize(handle, fileSize);
+	if (LT_CHECK_ERROR(error)) return error;
+
+	size_t offset = 0;
+
+	for (uintptr_t i = 0; i < gatherCount; i++) {
+		error = EsFileWriteSync(handle, offset, sizes[i], data[i]);
+		if (LT_CHECK_ERROR(error)) return error;
+		offset += sizes[i];
+	}
+
+	error = EsFileControl(handle, LT_FILE_CONTROL_FLUSH, nullptr, 0);
+	return error;
+}
+
+void *EsFileReadAllFromHandle(EsHandle handle, size_t *fileSize, EsError *error) {
+	if (error) *error = LT_SUCCESS;
+	EsFileOffset size = EsFileGetSize(handle);
+	if (fileSize) *fileSize = size;
+
+	void *buffer = EsHeapAllocate(size + 1, false);
+
+	if (!buffer) {
+		if (error) *error = LT_ERROR_INSUFFICIENT_RESOURCES;
+		return nullptr;
+	}
+
+	((char *) buffer)[size] = 0;
+
+	uintptr_t result = EsFileReadSync(handle, 0, size, buffer);
+
+	if (size != result) {
+		EsHeapFree(buffer);
+		buffer = nullptr;
+		if (error) *error = (EsError) result;
+	}
+	
+	return buffer;
+}
+
+void *EsFileReadAll(const char *filePath, ptrdiff_t filePathLength, size_t *fileSize, EsError *error) {
+	if (error) *error = LT_SUCCESS;
+	EsFileInformation information = EsFileOpen((char *) filePath, filePathLength, LT_FILE_READ | LT_NODE_FAIL_IF_NOT_FOUND);
+
+	if (LT_SUCCESS != information.error) {
+		if (error) *error = information.error;
+		return nullptr;
+	}
+
+	void *buffer = EsFileReadAllFromHandle(information.handle, fileSize);
+	EsHandleClose(information.handle);
+	return buffer;
+}
+
+EsError EsFileCopy(const char *source, ptrdiff_t sourceBytes, const char *destination, ptrdiff_t destinationBytes, void **_copyBuffer,
+		EsFileCopyCallback callback, EsGeneric callbackData) {
+	const size_t copyBufferBytes = 262144;
+	void *copyBuffer = _copyBuffer && *_copyBuffer ? *_copyBuffer : EsHeapAllocate(copyBufferBytes, false);
+	if (_copyBuffer) *_copyBuffer = copyBuffer;
+
+	if (!copyBuffer) {
+		return LT_ERROR_INSUFFICIENT_RESOURCES;
+	}
+
+	EsError error = LT_SUCCESS;
+
+	EsFileInformation sourceFile = EsFileOpen(source, sourceBytes, LT_FILE_READ | LT_NODE_FILE | LT_NODE_FAIL_IF_NOT_FOUND);
+
+	if (sourceFile.error == LT_SUCCESS) {
+		EsFileInformation destinationFile = EsFileOpen(destination, destinationBytes, LT_FILE_WRITE | LT_NODE_FILE | LT_NODE_FAIL_IF_FOUND);
+
+		if (destinationFile.error == LT_SUCCESS) {
+			error = EsFileResize(destinationFile.handle, sourceFile.size);
+
+			if (error == LT_SUCCESS) {
+				for (uintptr_t i = 0; i < sourceFile.size; i += copyBufferBytes) {
+					size_t bytesRead = EsFileReadSync(sourceFile.handle, i, copyBufferBytes, copyBuffer);
+
+					if (LT_CHECK_ERROR(bytesRead)) { 
+						error = bytesRead; 
+						break; 
+					}
+
+					size_t bytesWritten = EsFileWriteSync(destinationFile.handle, i, bytesRead, copyBuffer);
+
+					if (LT_CHECK_ERROR(bytesWritten)) { 
+						error = bytesWritten; 
+						break; 
+					}
+
+					EsAssert(bytesRead == bytesWritten);
+
+					if (callback && !callback(i + bytesWritten, sourceFile.size, callbackData)) {
+						error = LT_ERROR_CANCELLED;
+						break;
+					}
+				}
+			}
+
+			EsHandleClose(destinationFile.handle);
+		} else {
+			error = destinationFile.error;
+		}
+
+		EsHandleClose(sourceFile.handle);
+	} else {
+		error = sourceFile.error;
+	}
+
+	if (!_copyBuffer) EsHeapFree(copyBuffer);
+	return error;
+}
