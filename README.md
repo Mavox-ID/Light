@@ -175,3 +175,8 @@ Applications
 File Manager
 * LPP application icon in the file manager
 * When you right-click on a file, you will be given the option 'Open file as' and the choice of which .lpp application to use to open the file or open it as an executable
+* Minimal folders for the user such as Desktop, Downloads, etc.
+
+Desktop
+* Enable support for files and folders on the desktop
+* Make a beautiful taskbar
