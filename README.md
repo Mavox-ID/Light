@@ -131,7 +131,7 @@ Applications
 * IRC Client
 * LPlayer
 * Markdown Viewer
-* OBJ Viewer
+* OBJ Viewer (Port Mesa)
 * POSIX Launcher
 * Script Console
 * System Monitor
@@ -153,6 +153,7 @@ Drivers
 * Audio: HD Audio.
 * NICs: 8254x.
 * USB: XHCI, bulk storage devices, human interface devices.
+* All Apps have a icon in File manager
 
 Desktop
 * Custom user interface library.
@@ -172,11 +173,7 @@ Applications
 * Working communication channel IRC Client
 * And additional settings and information about the PC and system in System Monitor
 
-File Manager
-* LPP application icon in the file manager
-* When you right-click on a file, you will be given the option 'Open file as' and the choice of which .lpp application to use to open the file or open it as an executable
-* Minimal folders for the user such as Desktop, Downloads, etc.
-
 Desktop
 * Enable support for files and folders on the desktop
+* Minimal folders for the user such as Desktop, Downloads, etc.
 * Make a beautiful taskbar
