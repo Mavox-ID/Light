@@ -307,7 +307,7 @@ Option options[] = {
 	{ "Emulator.AHCI", OPTION_TYPE_BOOL, { .b = true } },
 	{ "Emulator.ATA", OPTION_TYPE_BOOL, { .b = false } },
 	{ "Emulator.NVMe", OPTION_TYPE_BOOL, { .b = false }, .warning = "Recent versions of Qemu have trouble booting from NVMe drives." },
-	{ "Emulator.CDROMImage", OPTION_TYPE_STRING, { .s = "bin/light.iso" } },
+	{ "Emulator.CDROMImage", OPTION_TYPE_STRING, { .s = NULL } },
 	{ "Emulator.USBImage", OPTION_TYPE_STRING, { .s = NULL } },
 	{ "Emulator.USBHostVendor", OPTION_TYPE_STRING, { .s = NULL } },
 	{ "Emulator.USBHostProduct", OPTION_TYPE_STRING, { .s = NULL } },
