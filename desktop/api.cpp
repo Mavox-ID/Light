@@ -53,6 +53,7 @@ struct EnumString { const char *cName; int value; };
 #define DESKTOP_MSG_SET_MODIFIED             (19)
 #define DESKTOP_MSG_QUERY_OPEN_DOCUMENT      (20)
 #define DESKTOP_MSG_LIST_OPEN_DOCUMENTS      (21)
+#define DESKTOP_MSG_APPLICATION_LIST_GET     (22)
 
 struct EsFileStore {
 #define FILE_STORE_HANDLE        (1)
@@ -565,6 +566,11 @@ void EsSystemShutdown(uint32_t action) {
 
 void EsSystemConfigurationReadFileTypes(EsBuffer *buffer) {
 	uint8_t m = DESKTOP_MSG_FILE_TYPES_GET;
+	MessageDesktop(&m, 1, LT_INVALID_HANDLE, buffer);
+}
+
+void EsSystemConfigurationReadApplications(EsBuffer *buffer) {
+	uint8_t m = DESKTOP_MSG_APPLICATION_LIST_GET;
 	MessageDesktop(&m, 1, LT_INVALID_HANDLE, buffer);
 }
 

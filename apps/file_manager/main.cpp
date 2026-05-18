@@ -4,6 +4,7 @@
 #include <shared/hash_table.cpp>
 #include <shared/array.cpp>
 #include <shared/arena.cpp>
+#include "lpp_bundle.h"
 uintptr_t stableCommandID = 1;
 
 // TODO Possible candidates for moving in the core API:
@@ -535,12 +536,14 @@ void _start() {
 	LoadSettings();
 
 	{
-		size_t cfgBytes;
-		char *cfgData = (char *) EsFileReadAll(EsLiteral("0:/Light/Default.ini"), &cfgBytes);
-		if (cfgData) {
-			EsINIState s = { .buffer = cfgData, .bytes = cfgBytes };
+		EsBuffer appsBuffer = { .canGrow = true };
+		EsSystemConfigurationReadApplications(&appsBuffer);
+
+		if (appsBuffer.out) {
+			EsINIState s = { .buffer = (char *) appsBuffer.out, .bytes = appsBuffer.bytes };
 			bool inApp = false, nameMatch = false;
 			int64_t foundId = 0;
+
 			while (EsINIParse(&s)) {
 				if (!s.keyBytes) {
 					if (inApp && nameMatch && foundId) { openWithAppID = foundId; break; }
@@ -554,7 +557,7 @@ void _start() {
 				}
 			}
 			if (inApp && nameMatch && foundId) openWithAppID = foundId;
-			EsHeapFree(cfgData);
+			EsHeapFree(appsBuffer.out);
 		}
 	}
 

@@ -589,28 +589,21 @@ void ThumbnailGenerateTask(Instance *, Task *task) {
 	uint32_t originalWidth, originalHeight;
 	uint32_t *originalBits = nullptr;
 
-	// Check if this is a .lpp bundle — try to load the embedded app icon.
-	String taskPath = task->string;
-	String ext = PathGetExtension(taskPath);
-	bool isLpp = ext.bytes == 3
-		&& EsCRTtolower(ext.text[0]) == 'l'
-		&& EsCRTtolower(ext.text[1]) == 'p'
-		&& EsCRTtolower(ext.text[2]) == 'p';
+	// Если это .lpp — достаём иконку из бандла вместо загрузки как картинки
+	String taskExt = PathGetExtension(task->string);
+	bool isLpp = taskExt.bytes == 3
+		&& (taskExt.text[0] == 'l' || taskExt.text[0] == 'L')
+		&& (taskExt.text[1] == 'p' || taskExt.text[1] == 'P')
+		&& (taskExt.text[2] == 'p' || taskExt.text[2] == 'P');
 
 	if (isLpp) {
-		EsBundle bundle = { .base = (const BundleHeader *) file, .bytes = (ptrdiff_t) fileBytes };
 		size_t icon32Bytes;
-		const void *icon32 = EsBundleFind(&bundle, EsLiteral("$Icons/32"), &icon32Bytes);
-
+		const void *icon32 = LppFindIcon32(file, fileBytes, &icon32Bytes);
 		if (icon32) {
 			originalBits = (uint32_t *) EsImageLoad(icon32, icon32Bytes, &originalWidth, &originalHeight, 4);
 		}
-
 		EsHeapFree(file);
-
-		if (!originalBits) {
-			return; // No embedded icon found in this .lpp.
-		}
+		if (!originalBits) return;
 	} else {
 		originalBits = (uint32_t *) EsImageLoad(file, fileBytes, &originalWidth, &originalHeight, 4);
 		EsHeapFree(file);
@@ -744,9 +737,25 @@ int ListItemMessage(EsElement *element, EsMessage *message) {
 				EsRectangle destination = EsPainterBoundsClient(message->painter);
 				EsRectangle source = LT_RECT_2S(thumbnail->width, thumbnail->height);
 				destination = EsRectangleFit(destination, source, true /* allow scaling up */);
-				// EsDrawBlock(message->painter, EsRectangleAdd(destination, LT_RECT_1(2)), 0x20000000);
 				EsDrawBitmapScaled(message->painter, destination, source, thumbnail->bits, thumbnail->width * 4, 0xFF);
 				return LT_HANDLED;
+			}
+		}
+
+		{
+			Instance *instance = element->instance;
+			int idx = EsListViewGetIndexFromItem(element);
+			if (idx >= 0 && idx < (int) instance->listContents.Length()) {
+				FolderEntry *entry = instance->listContents[idx].entry;
+				FileType *ft = FolderEntryGetType(instance->folder, entry);
+
+				if (ft && ft->customIconBits) {
+					EsRectangle dest = EsPainterBoundsClient(message->painter);
+					EsRectangle src  = LT_RECT_2S(ft->customIconWidth, ft->customIconHeight);
+					dest = EsRectangleFit(dest, src, false);
+					EsDrawBitmapScaled(message->painter, dest, src, ft->customIconBits, ft->customIconWidth * 4, 0xFF);
+					return LT_HANDLED;
+				}
 			}
 		}
 	}

@@ -2947,6 +2947,8 @@ bool /* returns false on fatal error */ DesktopSyscall(EsObjectID windowID, Appl
 	} else if (buffer[0] == DESKTOP_MSG_FILE_TYPES_GET && pipe) {
 		if (~application->permissions & APPLICATION_PERMISSION_VIEW_FILE_TYPES) return false;
 		ConfigurationWriteSectionsToBuffer("file_type", false, pipe);
+	} else if (buffer[0] == DESKTOP_MSG_APPLICATION_LIST_GET && pipe) {
+	        ConfigurationWriteSectionsToBuffer("application", false, pipe);
 	} else if (buffer[0] == DESKTOP_MSG_ANNOUNCE_PATH_MOVED && bytes > 1 + sizeof(uintptr_t) * 2) {
 		if (~application->permissions & APPLICATION_PERMISSION_ALL_FILES) return false;
 

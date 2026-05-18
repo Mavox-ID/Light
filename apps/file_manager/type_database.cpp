@@ -4,7 +4,7 @@ struct FileTypeApplicationEntry {
 };
 
 struct FileType {
-	Array<FileTypeApplicationEntry> applicationEntries; // One per application that is involved with this type.
+	Array<FileTypeApplicationEntry> applicationEntries;
 	EsUniqueIdentifier identifier;
 	char *name;
 	size_t nameBytes;
@@ -12,9 +12,12 @@ struct FileType {
 	
 	char *customIcon;
 	size_t customIconBytes;
+
+	uint32_t *customIconBits;
+	uint32_t customIconWidth, customIconHeight;
 	
 	bool textual;
-	bool hasThumbnailGenerator; // TODO Allow applications to register their own thumbnail generators.
+	bool hasThumbnailGenerator;
 };
 
 Array<FileType> knownFileTypes; 
@@ -204,6 +207,94 @@ void AddKnownFileTypes() {
 			}
 
 			EsMemoryZero(&applicationEntry, sizeof(applicationEntry));
+		}
+	}
+	{
+		size_t cfgBytes;
+		char *cfgData = (char *) EsFileReadAll(EsLiteral("0:/Light/Default.ini"), &cfgBytes);
+
+		if (cfgData) {
+			struct AppEntry { char name[128]; char exec[256]; };
+			Array<AppEntry> appMap = {};
+
+			EsINIState sc = { .buffer = cfgData, .bytes = cfgBytes };
+			AppEntry cur = {};
+			bool inApp = false;
+
+			auto FlushApp = [&]() {
+				if (inApp && cur.name[0] && cur.exec[0]) appMap.Add(cur);
+				EsMemoryZero(&cur, sizeof(cur));
+				inApp = false;
+			};
+
+			while (EsINIParse(&sc)) {
+				if (!sc.keyBytes) {
+					FlushApp();
+					inApp = (0 == EsStringCompareRaw(sc.section, sc.sectionBytes, EsLiteral("application")));
+				} else if (inApp) {
+					if (0 == EsStringCompareRaw(sc.key, sc.keyBytes, EsLiteral("name")))
+						EsMemoryCopy(cur.name, sc.value, sc.valueBytes < sizeof(cur.name) - 1 ? sc.valueBytes : sizeof(cur.name) - 1);
+					else if (0 == EsStringCompareRaw(sc.key, sc.keyBytes, EsLiteral("executable")))
+						EsMemoryCopy(cur.exec, sc.value, sc.valueBytes < sizeof(cur.exec) - 1 ? sc.valueBytes : sizeof(cur.exec) - 1);
+				}
+			}
+			FlushApp();
+
+			for (uintptr_t i = 0; i < knownFileTypes.Length(); i++) {
+				FileType *ft = &knownFileTypes[i];
+				if (!ft->customIconBytes) continue;
+
+				const char *val = ft->customIcon;
+				size_t valLen = ft->customIconBytes;
+
+				const char *prefix = "bundle:";
+				size_t prefixLen = 7;
+				if (valLen <= prefixLen) continue;
+				if (0 != EsStringCompareRaw(val, prefixLen, prefix, prefixLen)) continue;
+
+				const char *rest = val + prefixLen;
+				size_t restLen = valLen - prefixLen;
+				const char *colon2 = nullptr;
+				for (size_t j = 0; j < restLen; j++) {
+					if (rest[j] == ':') { colon2 = rest + j; break; }
+				}
+				if (!colon2) continue;
+
+				const char *appName   = rest;
+				size_t appNameLen     = colon2 - rest;
+				const char *bundleKey = colon2 + 1;
+				size_t bundleKeyLen   = restLen - appNameLen - 1;
+
+				const char *execPath = nullptr;
+				for (uintptr_t j = 0; j < appMap.Length(); j++) {
+					if (0 == EsStringCompareRaw(appMap[j].name, -1, appName, appNameLen)) {
+						execPath = appMap[j].exec;
+						break;
+					}
+				}
+				if (!execPath) continue;
+
+				size_t lppSize;
+				void *lppData = EsFileMap(execPath, -1, &lppSize, LT_MEMORY_MAP_OBJECT_READ_ONLY);
+				if (!lppData) continue;
+
+				size_t iconBytes;
+				const void *iconData = LppFindFile(lppData, lppSize, bundleKey, bundleKeyLen, &iconBytes);
+				if (iconData) {
+					uint32_t w, h;
+					uint32_t *bits = (uint32_t *) EsImageLoad(iconData, iconBytes, &w, &h, 4);
+					if (bits) {
+						ft->customIconBits  = bits;
+						ft->customIconWidth  = w;
+						ft->customIconHeight = h;
+					}
+				}
+
+				EsMemoryUnreserve(lppData);
+			}
+
+			appMap.Free();
+			EsHeapFree(cfgData);
 		}
 	}
 }

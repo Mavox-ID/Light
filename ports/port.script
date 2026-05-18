@@ -101,6 +101,7 @@ void PortBochs() {
     assert FileCopy("ports/bochs/plugin.h", "bin/source/plugin.h");
     assert FileCopy("ports/bochs/light.cc", "bin/source/gui/light.cc");
     assert FileCopy("ports/bochs/gui_Makefile.in", "bin/source/gui/Makefile.in");
+    system("mkdir -p root/Main/{Downloads,Video,Images,Documents,Desktop}");
     //system("mkdir -p root/Light/FOS");
     //system("cp -r res/FOS/* root/Light/FOS/");
 
