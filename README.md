@@ -177,3 +177,6 @@ Desktop
 * Enable support for files and folders on the desktop
 * Minimal folders for the user such as Desktop, Downloads, etc.
 * Make a beautiful taskbar
+
+TODO
+* Make all TODO's
