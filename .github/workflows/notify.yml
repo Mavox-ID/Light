@@ -1,0 +1,30 @@
+name: Issue and PR Notification
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "[LightOS] New ${{ github.event_name }}: ${{ github.event.issue.title || github.event.pull_request.title }}"
+          to: markd.voznyuk@gmail.com
+          from: "GitHub Actions <${{ secrets.MAIL_USERNAME }}>"
+          body: |
+            Событие: ${{ github.event_name }}
+            Автор: ${{ github.actor }}
+            Ссылка: ${{ github.event.issue.html_url || github.event.pull_request.html_url }}
+            
+            Текст:
+            ${{ github.event.issue.body || github.event.pull_request.body }}
