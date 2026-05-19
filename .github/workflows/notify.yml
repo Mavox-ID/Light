@@ -19,12 +19,12 @@ jobs:
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: "[LightOS] New ${{ github.event_name }}: ${{ github.event.issue.title || github.event.pull_request.title }}"
-          to: markd.voznyuk@gmail.com
-          from: "GitHub Actions <${{ secrets.MAIL_USERNAME }}>"
+          to: ${{ secrets.MAIL_TO }}
+          from: "LightOS GitHub Bot <${{ secrets.MAIL_USERNAME }}>"
           body: |
-            Событие: ${{ github.event_name }}
-            Автор: ${{ github.actor }}
-            Ссылка: ${{ github.event.issue.html_url || github.event.pull_request.html_url }}
+            Github: ${{ github.event_name }}
+            Author: ${{ github.actor }}
+            Link: ${{ github.event.issue.html_url || github.event.pull_request.html_url }}
             
-            Текст:
+            Text:
             ${{ github.event.issue.body || github.event.pull_request.body }}
